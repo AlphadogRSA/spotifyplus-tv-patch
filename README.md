@@ -1,4 +1,10 @@
-# Spotify+ TV 0.4
+# Spotify+ TV 0.5
+
+Version 0.5 fixes themes across the actual TV interface: class-based focus outlines, primary actions, playback progress, playing-track labels and context menus. Aurora, Midnight and Ember colors now use the TV selectors verified on the installed UI; Spotify Original restores the original colors. Artwork/layout and existing player functions remain in place.
+
+Promotion hiding now covers Upgrade text, navigation offers, banners, options and accessible labels, rather than only exact button captions. The extension's own setting is called **Hide promotions**. Reused controls are restored when their content changes; containers with unrelated playback controls are preserved.
+
+The extension keeps one presentation controller per page, coalesces relevant DOM changes, batches artwork reads/writes and skips layout scans for unchanged settings, focus/progress changes and opacity-only fades. Audio configuration and hardware band mappings are cached, unchanged EQ settings perform no repeated hardware writes, playback/metadata use callbacks, closed dialogs release their views, and lyrics keep 250 ms updates while idle work drops to once per second. Existing lyrics, artwork blur, motion, sleep timer, recognized-ad muting and Spotify-session EQ/boost remain available. Your saved settings are retained by a same-key update.
 
 Version 0.4 adds **Spotify-session EQ and volume boost**, keeps the original artwork-driven appearance with optional blur and accent colors, hides the visible Upgrade button by default, and simplifies the native TV interface. See [audio setup](AUDIO.md). The audio engine never attaches to the shared output mix. A one-time ADB diagnostic permission is required on this inspected Android 10 TV to identify only the current Spotify process's active audio sessions. New installs leave EQ/boost off; updates retain your settings.
 

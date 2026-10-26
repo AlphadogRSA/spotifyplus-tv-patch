@@ -1,0 +1,22 @@
+const {chromium}=require('playwright');const fs=require('node:fs');const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const browser=await chromium.launch(process.env.SPTV_BROWSER?{executablePath:process.env.SPTV_BROWSER}:{});try{
+ const page=await browser.newPage({viewport:{width:1280,height:720}});await page.route('**/*',r=>r.abort());
+ const source=fs.readFileSync(process.env.SPTV_PRESENTATION_SCRIPT||path.join(__dirname,'../assets/spotifyplus-tv.js'),'utf8');
+ await page.setContent('<main>'+Array.from({length:1000},(_,i)=>`<div class="card"><span>Track ${i}</span></div>`).join('')+'<div id="progress" class="progress-bar__indicator"></div><button id="focus" class="icon-button">Play</button></main>');
+ await page.evaluate(()=>{window.geometryReads=0;const original=Element.prototype.getBoundingClientRect;Element.prototype.getBoundingClientRect=function(){window.geometryReads++;return original.call(this)}});
+ const config={theme:1,blurArtwork:true,hideUpgrade:true,motion:false};
+ const run=()=>page.evaluate(({source,config})=>(0,eval)('('+source+')')(config),{source,config});
+ await run();await page.waitForTimeout(400);await page.evaluate(()=>window.geometryReads=0);
+ for(let i=0;i<20;i++)await run();
+ const repeated=await page.evaluate(()=>window.geometryReads);
+ console.log('Identical-config geometry reads:',repeated);assert.equal(repeated,0,'Unchanged settings must not rescan artwork/layout');
+ await page.evaluate(()=>{window.geometryReads=0;for(let i=0;i<60;i++){document.getElementById('progress').style.transform='scaleX('+i/100+')';document.getElementById('focus').className=i%2?'icon-button icon-button--focused':'icon-button'}});
+ await page.waitForTimeout(400);const changing=await page.evaluate(()=>window.geometryReads);
+ console.log('Progress/focus-only geometry reads:',changing);assert.equal(changing,0,'Normal focus/progress changes must not rescan artwork/layout');
+ await page.evaluate(()=>{const image=document.createElement('img');image.id='ambient-art';image.style.cssText='position:absolute;width:1280px;height:720px;object-fit:cover;opacity:.8';document.body.appendChild(image)});await page.waitForTimeout(400);
+ await page.evaluate(()=>{window.geometryReads=0;for(let i=0;i<60;i++)document.getElementById('ambient-art').style.opacity=String(.4+i/200)});await page.waitForTimeout(400);
+ const fades=await page.evaluate(()=>window.geometryReads);console.log('Artwork fade-only geometry reads:',fades);assert.equal(fades,0,'Artwork opacity animation must not trigger layout rescans');
+ await page.evaluate(()=>{const n=document.createElement('aside');n.id='new-promo';n.textContent='Upgrade now';document.querySelector('main').appendChild(n)});
+ await page.waitForTimeout(400);assert.equal(await page.locator('#new-promo').isVisible(),false,'Incremental promotions still need to hide');
+ console.log('Presentation efficiency: 4 checks passed');
+}finally{await browser.close()}})().catch(e=>{console.error(e.message);process.exitCode=1});

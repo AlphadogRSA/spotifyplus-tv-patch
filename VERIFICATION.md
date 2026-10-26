@@ -1,5 +1,15 @@
 # Verification — 26 October 2026
 
+## Release 0.5
+
+- Reproduced the theme issue: the TV stylesheet hard-codes focus/green colors and uses `--focused` classes; it does not consume the desktop color tokens previously set by the extension. Regression tests failed on actual TV selector fixtures before the fix. The new rules target those TV states without replacing artwork or layout.
+- The final 0.5 four-APK set was rebuilt, aligned and signature-verified, installed over 0.4 without uninstalling, and cold-launched with Status: ok. On the TV, native remote theme switching changed the current tile outline to Aurora rgb(145,231,207), Midnight rgb(187,179,255) and Ember rgb(255,191,152). Spotify Original restored white. The previous Ember selection was restored after this check.
+- Promotion filtering reported three matching elements on the live page and zero visible Upgrade labels. The native settings and lyrics dialogs also had no visible Upgrade labels. Existing navigation and playback controls were retained. User preferences, including their artwork-blur choice and audio settings, were preserved.
+- Local browser checks: 12 existing presentation checks, 16 theme/promotion regression checks and 4 layout-efficiency checks passed. They cover native focus/pseudo-elements, progress/playing colors, primary buttons, broad labels/banners, unrelated content, reused/detached nodes, reversible settings, foreground artwork and idle work.
+- In a 1,000-card browser fixture, repeating unchanged settings 20 times caused 20,060 geometry reads in 0.4 and zero in 0.5. Focus/progress-only and artwork-opacity-only updates caused zero geometry reads in 0.5. This measures extension work in that fixture, not whole-app frame rate or device battery use.
+- Native Java checks passed: 13 lyrics, 10 provider, 13 ad-state, 7 audio-session isolation and 10 EQ settings/cache assertions. The EQ cache test verifies zero additional hardware writes across 100 identical updates, targeted changed-band writes, device-range clamping, control invalidation and failure retry. The Kotlin fingerprint suite passed 16 checks during the build.
+- On-device playback activated Spotify-session audio effects after the callback/caching changes. Lyrics received current cached metadata and enabled the manual provider lookup. Dialog cleanup and callback replacement were independently reviewed; fast lyric interpolation and process-local sleep timer behavior remain implemented. Ad timeline behavior is unchanged; no new audible live-ad verification was performed.
+
 ## Release 0.4
 
 - The modular ReVanced build applied to hash-verified original version 1.134.2 inputs, merged the runtime extension, rebuilt resources, aligned all four APKs and verified every signature. Final output was installed with install-multiple -r and the existing local key. Cold launch returned Status: ok. No uninstall or app-data reset was performed.

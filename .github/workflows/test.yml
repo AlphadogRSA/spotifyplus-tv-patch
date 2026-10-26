@@ -28,9 +28,29 @@ jobs:
           java -ea -cp test-classes AdMuteStateTest
           javac -d test-classes src/dev/aurora/tvpatch/AudioSessions.java tests/AudioSessionsTest.java
           java -ea -cp test-classes AudioSessionsTest
+          javac -d test-classes src/dev/aurora/tvpatch/AudioEffectPlan.java tests/AudioEffectPlanTest.java
+          java -ea -cp test-classes AudioEffectPlanTest
       - name: Test modular fingerprints
         run: bash revanced/gradlew -p revanced testFingerprints
       - name: Check source tools
         run: |
           python3 -m py_compile patch.py import_lyrics.py
           node -e "new Function('return ('+require('fs').readFileSync('assets/spotifyplus-tv.js','utf8')+')')"
+  presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runtime
+        run: |
+          npm install --prefix .tools/browser --no-save --no-package-lock playwright@1.62.1
+          node .tools/browser/node_modules/playwright/cli.js install --with-deps chromium
+      - name: Check TV themes, promotion hiding and layout work
+        env:
+          NODE_PATH: ${{ github.workspace }}/.tools/browser/node_modules
+        run: |
+          node tests/presentation.test.cjs
+          node tests/theme-regression.test.cjs
+          node tests/presentation-performance.test.cjs

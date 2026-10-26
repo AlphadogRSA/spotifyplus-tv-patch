@@ -2,7 +2,7 @@
 
 This host-side Kotlin project uses official ReVanced Patcher 22.0.0 and Library 4.0.1 from the SHA-256 pinned official CLI 6.0.0 distribution. `bootstrap.py` verifies the download. Java 17 and Gradle 8.10.2 are required; the wrapper supplies Gradle. No GitHub Packages credentials are needed.
 
-`build.ps1` first compiles the independent MIT Java runtime to DEX, then runs `testFingerprints bundle -PextensionDex=ABSOLUTE_DEX_PATH`. The resulting `build/libs/spotifyplus-tv-0.4.rvp` contains Kotlin patches, theme/notices resources, and `extensions/spotifyplus-tv.rve` (the compiled DEX). Build inputs are your original four version 1.134.2 APKs, checked against `original_hashes.json`. Keep APKs and signing keys out of Git.
+`build.ps1` first compiles the independent MIT Java runtime to DEX, then runs `testFingerprints bundle -PextensionDex=ABSOLUTE_DEX_PATH`. The resulting `build/libs/spotifyplus-tv-0.5.rvp` contains Kotlin patches, theme/notices resources, and `extensions/spotifyplus-tv.rve` (the compiled DEX). Build inputs are your original four version 1.134.2 APKs, checked against `original_hashes.json`. Keep APKs and signing keys out of Git.
 
 The default aggregate depends on lifecycle, remote menu, WebView, own-session, and ad-muting bytecode patches. They depend on runtime-extension merging and a preflight that rejects existing extension classes and missing/ambiguous matches. Manifest changes use `resourcePatch`; assets use `rawResourcePatch`; bytecode changes use `bytecodePatch`. The current API uses `apply` blocks. The runner accepts explicit named selections and lets the official patcher resolve dependencies.
 

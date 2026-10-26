@@ -47,6 +47,12 @@ public final class Hooks {
     private static WeakReference<WebView> web = new WeakReference<>(null);
     private static MediaSession.Token token;
     private static MediaController controller;
+    private static volatile PlaybackState cachedPlayback;
+    private static volatile MediaMetadata cachedMetadata;
+    private static MediaController.Callback controllerCallback;
+    private static final List<AlertDialog> dialogs = new ArrayList<>();
+    private static final Map<AlertDialog, Runnable> dialogUpdates = new LinkedHashMap<>();
+    private static final Pattern TRACK_ID = Pattern.compile("([A-Za-z0-9]{22})(?:$|[?/#])");
     private static AlertDialog menu, lyricDialog;
     private static TextView lyricTitle, lyricStatus;
     private static final TextView[] lyricRows = new TextView[3];
@@ -81,11 +87,11 @@ public final class Hooks {
                 applyAdVolume();
                 Activity current = activity.get();
                 if (current != null) {
-                    PlaybackState playback = controller == null ? null : controller.getPlaybackState();
+                    PlaybackState playback = cachedPlayback;
                     AudioDsp.tick(current, playback != null && playback.getState() == PlaybackState.STATE_PLAYING);
                 }
             } catch (Exception ignored) { }
-            UI.postDelayed(this, 250);
+            UI.postDelayed(this, lyricDialog != null && lyricDialog.isShowing() ? 250 : 1000);
         }
     };
     private static boolean started;
@@ -114,7 +120,7 @@ public final class Hooks {
             AD_MUTE.enabled(prefs(a).getBoolean("muteAds", true));
             WebView view = find(a.getWindow().getDecorView());
             web = new WeakReference<>(view);
-            if (token != null) controller = new MediaController(a.getApplicationContext(), token);
+            if (token != null) connectController(a.getApplicationContext());
             if (!started) { started = true; UI.post(ticker); }
             if (view != null) apply(view);
             Log.i("SPTV", "Activity extension attached");
@@ -127,8 +133,8 @@ public final class Hooks {
     public static void detach(Activity a) {
         if (activity.get() != a) return;
         AudioDsp.stop();
-        if (menu != null) menu.dismiss();
-        if (lyricDialog != null) lyricDialog.dismiss();
+        for (AlertDialog dialog : new ArrayList<>(dialogs)) dialog.dismiss();
+        clearLyricViews();
         menu = null; lyricDialog = null;
         selectDown = null; longSelect = false;
         activity.clear(); web.clear();
@@ -142,8 +148,43 @@ public final class Hooks {
             token = (MediaSession.Token) nativeToken;
             Log.i("SPTV", "Own media-session token captured");
             Activity a = activity.get();
-            if (a != null) controller = new MediaController(a.getApplicationContext(), token);
+            if (a != null) connectController(a.getApplicationContext());
         } catch (Exception ignored) { }
+    }
+    private static void connectController(Context context) {
+        if (controller != null && controllerCallback != null) controller.unregisterCallback(controllerCallback);
+        final MediaController next = new MediaController(context.getApplicationContext(), token);
+        controller = next;
+        controllerCallback = new MediaController.Callback() {
+            @Override public void onPlaybackStateChanged(PlaybackState state) { if (controller == next) cachedPlayback = state; }
+            @Override public void onMetadataChanged(MediaMetadata metadata) { if (controller == next) cachedMetadata = metadata; }
+            @Override public void onSessionDestroyed() {
+                if (controller != next) return;
+                next.unregisterCallback(this);
+                controller = null; controllerCallback = null; cachedPlayback = null; cachedMetadata = null;
+                AudioDsp.stop();
+            }
+        };
+        next.registerCallback(controllerCallback, UI);
+        cachedPlayback = next.getPlaybackState(); cachedMetadata = next.getMetadata();
+    }
+    private static void clearLyricViews() {
+        lyricTitle = null; lyricStatus = null; fetchButton = null; plainButton = null;
+        for (int i = 0; i < lyricRows.length; i++) lyricRows[i] = null;
+    }
+    private static void setTextChanged(TextView view, CharSequence text) {
+        if (view != null && !android.text.TextUtils.equals(view.getText(), text)) view.setText(text);
+    }
+    private static AlertDialog trackDialog(AlertDialog dialog) {
+        dialogs.add(dialog);
+        dialog.setOnDismissListener(ignored -> {
+            dialogs.remove(dialog);
+            Runnable update = dialogUpdates.remove(dialog);
+            if (update != null) UI.removeCallbacks(update);
+            if (menu == dialog) menu = null;
+            if (lyricDialog == dialog) { lyricDialog = null; clearLyricViews(); }
+        });
+        return dialog;
     }
     public static void page(WebView view) {
         if (view == null) return;
@@ -298,7 +339,7 @@ public final class Hooks {
         lp.setMargins(0, 5, 0, 5); panel.addView(view, lp);
     }
     private static AlertDialog show(Activity a, View content) {
-        AlertDialog dialog = new AlertDialog.Builder(a).setView(content).create();
+        AlertDialog dialog = trackDialog(new AlertDialog.Builder(a).setView(content).create());
         dialog.show(); Window window = dialog.getWindow();
         if (window != null) { window.setBackgroundDrawableResource(android.R.color.transparent); window.setLayout((int)(a.getResources().getDisplayMetrics().widthPixels * .82), -2); }
         return dialog;
@@ -306,13 +347,15 @@ public final class Hooks {
     public static void showMenu(Activity a) {
         if (a.isFinishing() || (menu != null && menu.isShowing())) return;
         LinearLayout body = panel(a);
-        add(body, text(a, "Spotify+ TV", 24, accent(a)));
+        TextView heading = text(a, "Spotify+ TV", 24, accent(a)); add(body, heading);
         SharedPreferences p = prefs(a);
         String[] names = {"Spotify original", "Aurora accent", "Midnight accent", "Ember accent"};
         Button theme = button(a, "Theme: " + names[p.getInt("theme", 1) % 4], () -> { });
         theme.setOnClickListener(v -> {
             int value = (p.getInt("theme", 1) + 1) % 4; p.edit().putInt("theme", value).apply();
-            theme.setText("Theme: " + names[value]); reapply();
+            theme.setText("Theme: " + names[value]); heading.setTextColor(accent(a));
+            if (theme.hasFocus() && theme.getBackground() instanceof GradientDrawable) ((GradientDrawable)theme.getBackground()).setColor(accent(a));
+            reapply();
         }); add(body, theme);
         Button motion = button(a, "Animated background: " + (p.getBoolean("motion", true) ? "on" : "off"), () -> { });
         motion.setOnClickListener(v -> {
@@ -324,10 +367,10 @@ public final class Hooks {
             boolean value = !p.getBoolean("blurArtwork", true); p.edit().putBoolean("blurArtwork", value).apply();
             blur.setText("Background artwork blur: " + (value ? "on" : "off")); reapply();
         }); add(body, blur);
-        Button upgrade = button(a, "Hide Upgrade button: " + (p.getBoolean("hideUpgrade", true) ? "on" : "off"), () -> { });
+        Button upgrade = button(a, "Hide promotions: " + (p.getBoolean("hideUpgrade", true) ? "on" : "off"), () -> { });
         upgrade.setOnClickListener(v -> {
             boolean value = !p.getBoolean("hideUpgrade", true); p.edit().putBoolean("hideUpgrade", value).apply();
-            upgrade.setText("Hide Upgrade button: " + (value ? "on" : "off")); reapply();
+            upgrade.setText("Hide promotions: " + (value ? "on" : "off")); reapply();
         }); add(body, upgrade);
         Button mute = button(a, "Mute detected ads: " + (p.getBoolean("muteAds", true) ? "on" : "off"), () -> { });
         mute.setOnClickListener(v -> {
@@ -338,16 +381,16 @@ public final class Hooks {
         add(body, button(a, "Audio · Equalizer & Boost", () -> { menu.dismiss(); showAudio(a); }));
         add(body, button(a, "Lyrics · local / LRCLIB", () -> { menu.dismiss(); showLyrics(a); }));
         add(body, button(a, "Sleep timer" + (sleepAt > 0 ? " · active" : ""), () -> {
-            menu.dismiss(); new AlertDialog.Builder(a).setTitle("Pause this Spotify session after…")
+            menu.dismiss(); trackDialog(new AlertDialog.Builder(a).setTitle("Pause this Spotify session after…")
                 .setItems(new String[]{"15 minutes", "30 minutes", "60 minutes", "Cancel timer"}, (dialog, which) -> {
                     sleepAt = which == 3 ? 0 : SystemClock.elapsedRealtime() + new long[]{900000,1800000,3600000}[which];
                     toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. Keep Spotify running.");
-                }).show();
+                }).create()).show();
         }));
-        add(body, button(a, "About", () -> new AlertDialog.Builder(a)
-            .setTitle("Spotify+ TV · 0.4")
+        add(body, button(a, "About", () -> trackDialog(new AlertDialog.Builder(a)
+            .setTitle("Spotify+ TV · 0.5")
             .setMessage("Made for your TV remote.\n\nArtwork blur, accent colors, lyrics, sleep timer, ad muting and audio controls.\n\nInspired by SpotifyPlus (MIT, © 2025 Devon Shoutz), Eevee's lyrics features and Spicetify's UI customization. Original Android TV implementation.\n\nOptional lyrics lookup sends track title, artist, album and duration to LRCLIB. Full source and license notices are included in the project and APK assets.")
-            .setPositiveButton("Close", null).show()));
+            .setPositiveButton("Close", null).create()).show()));
         add(body, button(a, "Return to Spotify", () -> menu.dismiss()));
         ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(Color.TRANSPARENT); scroll.addView(body);
         menu = show(a, scroll); theme.requestFocus();
@@ -377,9 +420,10 @@ public final class Hooks {
         }));
         ScrollView scroll = new ScrollView(a); scroll.addView(body);
         AlertDialog dialog = show(a, scroll); enabled.requestFocus();
-        UI.post(new Runnable() { public void run() {
-            if (dialog.isShowing()) { status.setText(AudioDsp.status()); UI.postDelayed(this, 1000); }
-        }});
+        Runnable updater = new Runnable() { public void run() {
+            if (dialog.isShowing()) { setTextChanged(status, AudioDsp.status()); UI.postDelayed(this, 1000); }
+        }};
+        dialogUpdates.put(dialog, updater); UI.post(updater);
     }
     private static Button gainButton(Activity a, SharedPreferences p, String key, String label, int min, int max, int step) {
         Button control = button(a, "", () -> { });
@@ -401,7 +445,7 @@ public final class Hooks {
     }
     private static String lyricName(MediaMetadata metadata) {
         String id = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
-        Matcher match = Pattern.compile("([A-Za-z0-9]{22})(?:$|[?/#])").matcher(id == null ? "" : id);
+        Matcher match = TRACK_ID.matcher(id == null ? "" : id);
         if (match.find()) return match.group(1) + ".lrc";
         String title = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
         String artist = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
@@ -416,7 +460,7 @@ public final class Hooks {
         controls.setBackgroundColor(Color.TRANSPARENT);
         Button play = button(a, "Play / pause", () -> {
             if (controller == null) return;
-            PlaybackState state = controller.getPlaybackState();
+            PlaybackState state = cachedPlayback;
             if (state != null && state.getState() == PlaybackState.STATE_PLAYING) controller.getTransportControls().pause();
             else controller.getTransportControls().play();
         });
@@ -453,7 +497,7 @@ public final class Hooks {
     }
     private static void requestLyrics(Activity a) {
         if (fetching || SystemClock.elapsedRealtime() < nextLookupAt || controller == null) return;
-        MediaMetadata metadata = controller.getMetadata();
+        MediaMetadata metadata = cachedMetadata;
         if (metadata == null) { toast("Start a track in Spotify first."); return; }
         String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
         String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
@@ -501,10 +545,10 @@ public final class Hooks {
     }
     private static void updateLyrics() {
         Activity a = activity.get(); if (a == null || lyricTitle == null) return;
-        MediaMetadata metadata = controller == null ? null : controller.getMetadata();
-        PlaybackState state = controller == null ? null : controller.getPlaybackState();
+        MediaMetadata metadata = cachedMetadata;
+        PlaybackState state = cachedPlayback;
         String title = metadata == null ? "Start a track in Spotify" : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        lyricTitle.setText(title == null ? "Local lyrics" : title);
+        setTextChanged(lyricTitle, title == null ? "Local lyrics" : title);
         String name = lyricName(metadata);
         String key = trackKey(metadata);
         File file = new File(new File(a.getFilesDir(), "sptv-lyrics"), name);
@@ -525,19 +569,21 @@ public final class Hooks {
         String[] plain = plainLyrics.isEmpty() ? new String[0] : plainLyrics.split("\\r?\\n");
         for (int i = 0; i < 3; i++) {
             int index = current + i - 1;
-            lyricRows[i].setTextSize(i == 1 ? settings.getInt("lyricSize", 30) : Math.max(16, settings.getInt("lyricSize", 30) - 10));
-            lyricRows[i].setText(lines.isEmpty() ? (i < plain.length ? plain[i] : "") : index >= 0 && index < lines.size() ? lines.get(index).text : "");
+            int size = i == 1 ? settings.getInt("lyricSize", 30) : Math.max(16, settings.getInt("lyricSize", 30) - 10);
+            float pixels = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, size, a.getResources().getDisplayMetrics());
+            if (Math.abs(lyricRows[i].getTextSize() - pixels) > .1f) lyricRows[i].setTextSize(size);
+            setTextChanged(lyricRows[i], lines.isEmpty() ? (i < plain.length ? plain[i] : "") : index >= 0 && index < lines.size() ? lines.get(index).text : "");
         }
         String trackTitle = metadata == null ? null : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
         String trackArtist = metadata == null ? null : metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
         boolean hasTrack = trackTitle != null && !trackTitle.trim().isEmpty() && trackArtist != null && !trackArtist.trim().isEmpty();
         fetchButton.setEnabled(hasTrack && !fetching && SystemClock.elapsedRealtime() >= nextLookupAt);
-        fetchButton.setText(fetching ? "Fetching…" : "Fetch from LRCLIB");
+        setTextChanged(fetchButton, fetching ? "Fetching…" : "Fetch from LRCLIB");
         plainButton.setEnabled(!plainLyrics.isEmpty());
         String status = lines.isEmpty() ? plainLyrics.isEmpty() ? "No lyrics loaded. Import " + name + " or fetch from LRCLIB."
             : "LRCLIB plain lyrics · choose Plain lyrics to scroll" : lyricSource + " · " + (position / 60000) + ":" + String.format("%02d", (position / 1000) % 60);
         if (key.equals(lookupKey) && lookupMessage != null && !lookupMessage.isEmpty()) status = lookupMessage + " " + status;
-        lyricStatus.setText(controller == null ? "Waiting for this app's media session. No other app is controlled."
+        setTextChanged(lyricStatus, controller == null ? "Waiting for this app's media session. No other app is controlled."
             : status);
     }
 }

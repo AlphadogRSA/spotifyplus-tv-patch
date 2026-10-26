@@ -1,6 +1,8 @@
 # Handoff
 
-## Current release: 0.4
+## Current release: 0.5
+
+The 0.5 follow-up fixes themes against verified TV class selectors, expands promotion/Upgrade hiding and optimizes DOM scanning, playback callbacks, dialog cleanup and DSP writes. See VERIFICATION.md for the measured checks. It keeps all 0.4 functions and persisted settings. The remote theme cycle and Spotify-only audio activation were observed after installing 0.5.
 
 The default build now uses modular Kotlin ReVanced patches and a precompiled MIT extension DEX. It adds default-on recognized-ad muting, Upgrade-button hiding, Spotify-style accents and background blur, polished TV labels, and per-process/session EQ plus 0–6 dB boost. There is no shared-output/session-0 effect path. See AUDIO.md for one-time ADB diagnostic permission setup. `install.ps1` installs all four APKs, grants that permission and launches the client. The same retained private key was used for updates; no uninstall was used for 0.4. The user paired Spotify again during testing.
 
