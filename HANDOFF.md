@@ -1,5 +1,11 @@
 # Handoff
 
+## Current release: 0.4
+
+The default build now uses modular Kotlin ReVanced patches and a precompiled MIT extension DEX. It adds default-on recognized-ad muting, Upgrade-button hiding, Spotify-style accents and background blur, polished TV labels, and per-process/session EQ plus 0–6 dB boost. There is no shared-output/session-0 effect path. See AUDIO.md for one-time ADB diagnostic permission setup. `install.ps1` installs all four APKs, grants that permission and launches the client. The same retained private key was used for updates; no uninstall was used for 0.4. The user paired Spotify again during testing.
+
+The final four-APK build is specific to the inspected Spotify TV 1.134.2 ARMv7/English/TV-density installation. Source archives and the private GitHub release exclude the local signing key, original-install backup, account data, fetched lyrics and user screenshots. The release installation archive necessarily includes the patched proprietary app and required splits for this personal installation; the MIT license does not relicense those binaries.
+
 This repository contains only the original TV extension and build/test tools. The proprietary original APKs, patched APK set, account data, signing key and fetched lyrics are intentionally excluded.
 
 ## Completed
@@ -19,4 +25,4 @@ The new **Lyrics · local / LRCLIB** panel was observed fetching and displaying 
 
 Use the original four installation APKs from your own TV and the private signing key retained locally. `build.ps1` verifies their hashes and produces a fully signed four-APK set. Updating with the same key preserves the current app's data; a different key normally requires reinstalling and signing in again. Do not install just the base APK or mix certificates across splits.
 
-The extension's added network request is only the explicit LRCLIB lookup; no Spotify login credentials or entitlement values are processed by it. Source code and tests remain MIT licensed. See README.md, LYRICS.md and assets/INSPIRATION.md for scope and notices.
+The extension's added network request is only the explicit LRCLIB lookup; no Spotify login credentials or entitlement values are processed by it. The runtime and its tests remain MIT licensed; the ReVanced host module is GPL-3.0-only under revanced/COPYING. See README.md, LYRICS.md and assets/INSPIRATION.md for scope and notices.

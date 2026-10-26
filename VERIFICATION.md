@@ -1,5 +1,15 @@
 # Verification — 26 October 2026
 
+## Release 0.4
+
+- The modular ReVanced build applied to hash-verified original version 1.134.2 inputs, merged the runtime extension, rebuilt resources, aligned all four APKs and verified every signature. Final output was installed with install-multiple -r and the existing local key. Cold launch returned Status: ok. No uninstall or app-data reset was performed.
+- Deterministic checks: 13 lyrics parser/timing assertions, 10 provider assertions, 13 ad-muting/restoration assertions, 7 audio-session isolation assertions and 16 Kotlin fingerprint/safety checks passed. The optional local Playwright/Edge presentation test passed 12 checks, including Upgrade hiding/restoration, dynamic insertion, fullscreen-background blur and clear foreground text/artwork. Python helpers compiled successfully.
+- The Android 10 diagnostic permission grant succeeded. On the TV, the audio panel reported Active · Spotify audio only while EQ/boost were enabled. Equalizer and LoudnessEnhancer initialization and settings returned successfully for this process's positive audio session. No shared-output effect was requested. The existing D-pad settings were retained across updates; the user adjusted audio/theme controls during testing.
+- The native extension menu, matching accent color, artwork blur and Upgrade controls rendered on the TV. Live WebView checks returned blur=1 and upgrade=1 on applicable pages. Counts can be zero on pages without matching artwork/Upgrade controls. The actual page’s fullscreen absolute artwork image was inspected to refine the background-only selector; smaller cover artwork is preserved.
+- Independent review found a lifecycle cleanup gap and an insufficiently strict diagnostic table header check. Both were fixed before the final build: activity destruction invalidates pending work and queues effect release; unfamiliar/reordered table layouts are rejected. No account data or diagnostic dumps are committed.
+- Ad muting is implemented and tested with synthetic state transitions, including disabling, volume changes and stale-state restoration. A real audible ad-break cycle has not been verified. Muting does not skip break duration. Audio attachment/settings were observed; no calibrated loudness or frequency-response measurements were made.
+- Original login and service behavior remain Spotify's. The user paired again during this session. Themes and audio settings remain app-private and are retained by same-key updates. No DNS/VPN filter, ad SDK removal, subscription spoofing or streaming replacement is included.
+
 ## Lyrics update 0.2
 
 - The new `build.ps1` entrypoint completed from the original four-APK input set, compiled the Java extension and D8 dex, applied the pinned hooks, and verified all four output signatures.

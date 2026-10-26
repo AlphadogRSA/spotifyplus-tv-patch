@@ -1,12 +1,24 @@
-# SpotifyPlus TV experimental local patch 0.2
+# Spotify+ TV 0.4
+
+Version 0.4 adds **Spotify-session EQ and volume boost**, keeps the original artwork-driven appearance with optional blur and accent colors, hides the visible Upgrade button by default, and simplifies the native TV interface. See [audio setup](AUDIO.md). The audio engine never attaches to the shared output mix. A one-time ADB diagnostic permission is required on this inspected Android 10 TV to identify only the current Spotify process's active audio sessions. New installs leave EQ/boost off; updates retain your settings.
+
+Spicetify CLI (https://github.com/spicetify/cli) inspired the CSS/presentation approach. It targets desktop clients. No Spicetify source, extension, ad blocker or asset is copied or bundled. This extension does not include an ad SDK, DNS/VPN service, or WebView network-request blocker. Its WebView changes affect presentation; native recognized ad breaks can be muted, and their duration still passes.
+
+The injected Java runtime and original JavaScript remain MIT licensed under LICENSE. The separate Kotlin ReVanced host module uses GPL-3.0-only under revanced/COPYING; its host dependencies are not injected into Spotify.
+
+Version 0.3 adds **detected-ad muting, enabled by default**, and a modular Kotlin ReVanced patch bundle. Muting observes the native `is_ad_playing` signal and changes Spotify's player-local volume. It remembers requested volume and restores it when the break ends, the setting is disabled, or the signal becomes stale after three minutes. It does not skip ad time, remove ads from the stream, or change subscription status. If player volume has not been observed, it does not guess a volume. Use **Mute detected ads** in the native settings menu to turn it off.
+
+See [modular patching](revanced/README.md) for patch types, fingerprints, dependencies, extensions, and license boundaries. The old `patch.py` is a legacy 0.2 path and does not install ad muting; use `build.ps1` for 0.3.
 
 This is an actual extension injected into the user's Spotify Android TV **1.134.2** installation (`com.spotify.tv.android`), rather than the separate Aurora companion. It is version-specific and intended for personal testing on the inspected Android 10 TV.
 
 ## Included
 
 - An in-app native TV settings panel opened with **Menu**, **F1**, or **hold OK/Select and release**.
-- Three custom themes (Aurora, Midnight, Ember) and Spotify's original/default appearance.
-- A slow cinematic CSS gradient with motion on/off. Styling targets large dark page panels; its coverage can vary as Spotify changes its remotely loaded TV UI.
+- Spotify original colors or Aurora/Midnight/Ember accents, following existing focus styles and artwork-derived page colors.
+- Optional blur/blending of fullscreen background artwork and decorative images, preserving text, controls and foreground album covers. Where appropriate, a backdrop uses artwork already loaded by the page. Motion has an on/off control and respects reduced-motion preferences.
+- Upgrade-button presentation filtering, enabled by default; this does not grant subscription features or remove the ad-break timeline.
+- Five EQ controls and 0 to +6 dB LoudnessEnhancer boost, attached only to this process's verified positive audio sessions. See AUDIO.md.
 - A sleep timer (15/30/60 minutes/cancel), using the current Spotify process's **own Android media-session token** and `MediaController.TransportControls.pause()`.
 - A native line-synchronized lyrics overlay for **your own or licensed local LRC files**, with a Play/Pause button targeting the same Spotify session. Timing reads the native media session and interpolates progress.
 - Optional **Fetch from LRCLIB** lookup for the current track, timed lyrics when available, and a scrollable plain-lyrics fallback. Lookups are manual, use HTTPS and send only track title, artist, album and duration to `lrclib.net`.
@@ -21,7 +33,7 @@ This is a first TV-specific subset, **not the full mobile SpotifyPlus module**. 
 
 ## On the TV
 
-Open **Spotify TV +**, sign in through Spotify, then press Menu or hold OK and release. Short OK presses are forwarded as a balanced down/up pair to the original app. Use D-pad and OK to choose settings; Back closes a dialog. Themes and motion settings persist; the sleep timer is process-local and does not survive a Spotify process restart. Keep Spotify running until it expires.
+Open **Spotify+ TV**, sign in through Spotify, then press Menu or hold OK and release. Short OK presses are forwarded as a balanced down/up pair to the original app. Use D-pad and OK to choose settings; Back closes a dialog. Themes and motion settings persist; the sleep timer is process-local and does not survive a Spotify process restart. Keep Spotify running until it expires.
 
 This installation required replacing the signed official package. Its previous local sign-in was not preserved. Signing in again is expected. Future Play Store updates cannot normally update this build because the certificate differs; restoring the official client also requires reinstalling it. The Play Store/native platform can reject a modified build or limit certificate-bound features such as Cast; those are not bypassed here.
 
@@ -69,7 +81,7 @@ The checked Windows build entrypoint is `build.ps1`. It checks all four input AP
 ```powershell
 $env:SPTV_STORE_PASSWORD = 'YOUR_KEYSTORE_PASSWORD'
 # Set SPTV_KEY_PASSWORD too if the key password differs.
-.\build.ps1 -OriginalDirectory C:\private\original-apks -AndroidSdk C:\Android\sdk -JavaHome C:\Java\jdk-17 -ApktoolJar C:\tools\apktool.jar -KeyStore C:\private\signing.keystore -KeyAlias YOUR_ALIAS -OutputDirectory C:\builds\sptv-02
+.\build.ps1 -OriginalDirectory C:\private\original-apks -AndroidSdk C:\Android\sdk -JavaHome C:\Java\jdk-17 -KeyStore C:\private\signing.keystore -KeyAlias YOUR_ALIAS -OutputDirectory C:\builds\sptv-04
 ```
 
 Keep your signing key private and out of GitHub. The existing personal build's key was retained locally, and is not in this repository. A new signing key requires reinstalling the package and signing into Spotify again.

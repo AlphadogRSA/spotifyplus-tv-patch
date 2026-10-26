@@ -2,10 +2,11 @@ param(
     [Parameter(Mandatory)][string]$OriginalDirectory,
     [Parameter(Mandatory)][string]$AndroidSdk,
     [Parameter(Mandatory)][string]$JavaHome,
-    [Parameter(Mandatory)][string]$ApktoolJar,
+    [string]$ApktoolJar,
     [Parameter(Mandatory)][string]$KeyStore,
     [Parameter(Mandatory)][string]$OutputDirectory,
-    [string]$KeyAlias = 'androiddebugkey'
+    [string]$KeyAlias = 'androiddebugkey',
+    [string]$GradleExecutable
 )
 $ErrorActionPreference = 'Stop'
 if (-not $env:SPTV_STORE_PASSWORD) { throw 'Set SPTV_STORE_PASSWORD for your own keystore; never commit the key or password.' }
@@ -13,7 +14,6 @@ if (Test-Path -LiteralPath $OutputDirectory) { throw 'OutputDirectory must be ne
 $original = (Resolve-Path -LiteralPath $OriginalDirectory).Path
 $sdk = (Resolve-Path -LiteralPath $AndroidSdk).Path
 $jdk = (Resolve-Path -LiteralPath $JavaHome).Path
-$apktool = (Resolve-Path -LiteralPath $ApktoolJar).Path
 $signingKey = (Resolve-Path -LiteralPath $KeyStore).Path
 $tools = Join-Path $sdk 'build-tools/35.0.0'
 $androidJar = Join-Path $sdk 'platforms/android-35/android.jar'
@@ -34,10 +34,18 @@ Check-Exit 'Java compilation'
 Check-Exit 'Class packaging'
 & (Join-Path $tools 'd8.bat') --min-api 26 --lib $androidJar --output (Join-Path $out 'dex') (Join-Path $out 'extension.jar')
 Check-Exit 'D8'
-python (Join-Path $PSScriptRoot 'patch.py') --base (Join-Path $original 'base.apk') --apktool $apktool --java (Join-Path $jdk 'bin/java.exe') --work (Join-Path $out 'patch') --dex (Join-Path $out 'dex/classes.dex') --framework (Join-Path $out 'framework')
-Check-Exit 'Injection and APK rebuild'
+$patchProject = Join-Path $PSScriptRoot 'revanced'
+python (Join-Path $patchProject 'bootstrap.py')
+Check-Exit 'Verified patcher download'
+if (-not $GradleExecutable) { $GradleExecutable = Join-Path $patchProject 'gradlew.bat' }
+& $GradleExecutable -p $patchProject testFingerprints bundle "-PextensionDex=$(Join-Path $out 'dex/classes.dex')"
+Check-Exit 'Kotlin patch compilation and fingerprint tests'
+$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-0.4.rvp'
+$classpath = $bundle + [IO.Path]::PathSeparator + (Join-Path $patchProject '.tools/revanced-cli-6.0.0-all.jar')
+& (Join-Path $jdk 'bin/java.exe') -cp $classpath dev.aurora.patches.RunnerKt apply $bundle (Join-Path $original 'base.apk') (Join-Path $out 'patched-unsigned.apk') (Join-Path $out 'patch') (Join-Path $tools 'aapt2.exe')
+Check-Exit 'Modular patching and APK rebuild'
 foreach ($entry in $hashes.PSObject.Properties) {
-    $inputApk = if ($entry.Name -eq 'base.apk') { Join-Path $out 'patch/patched-unsigned.apk' } else { Join-Path $original $entry.Name }
+    $inputApk = if ($entry.Name -eq 'base.apk') { Join-Path $out 'patched-unsigned.apk' } else { Join-Path $original $entry.Name }
     $aligned = Join-Path $out "aligned/$($entry.Name)"
     $signed = Join-Path $out "signed/$($entry.Name)"
     & (Join-Path $tools 'zipalign.exe') -P 16 -f 4 $inputApk $aligned

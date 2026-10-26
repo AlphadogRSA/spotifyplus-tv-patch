@@ -18,3 +18,5 @@ test-classes/
 __pycache__/
 .tools/
 .jvm-temp/
+.gradle/
+!revanced/gradle/wrapper/gradle-wrapper.jar

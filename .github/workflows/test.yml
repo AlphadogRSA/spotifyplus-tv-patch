@@ -24,6 +24,12 @@ jobs:
           javac -encoding UTF-8 -cp .tools/json.jar -d test-classes src/dev/aurora/tvpatch/Lyrics.java src/dev/aurora/tvpatch/Provider.java tests/LyricsTest.java tests/ProviderTest.java
           java -ea -cp test-classes:.tools/json.jar LyricsTest
           java -ea -cp test-classes:.tools/json.jar ProviderTest
+          javac -d test-classes src/dev/aurora/tvpatch/AdMuteState.java tests/AdMuteStateTest.java
+          java -ea -cp test-classes AdMuteStateTest
+          javac -d test-classes src/dev/aurora/tvpatch/AudioSessions.java tests/AudioSessionsTest.java
+          java -ea -cp test-classes AudioSessionsTest
+      - name: Test modular fingerprints
+        run: bash revanced/gradlew -p revanced testFingerprints
       - name: Check source tools
         run: |
           python3 -m py_compile patch.py import_lyrics.py
