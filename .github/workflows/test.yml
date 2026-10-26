@@ -1,0 +1,30 @@
+name: Extension tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch test-only JSON implementation
+        run: |
+          mkdir -p .tools test-classes
+          curl --fail --location --output .tools/json.jar https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar
+          echo '3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed  .tools/json.jar' | sha256sum --check
+      - name: Run deterministic tests
+        run: |
+          javac -encoding UTF-8 -cp .tools/json.jar -d test-classes src/dev/aurora/tvpatch/Lyrics.java src/dev/aurora/tvpatch/Provider.java tests/LyricsTest.java tests/ProviderTest.java
+          java -ea -cp test-classes:.tools/json.jar LyricsTest
+          java -ea -cp test-classes:.tools/json.jar ProviderTest
+      - name: Check source tools
+        run: |
+          python3 -m py_compile patch.py import_lyrics.py
+          node -e "new Function('return ('+require('fs').readFileSync('assets/spotifyplus-tv.js','utf8')+')')"
