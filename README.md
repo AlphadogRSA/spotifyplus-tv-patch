@@ -1,6 +1,6 @@
 # Spotify+ TV 1.3.0.2
 
-A personal modification of the inspected Spotify TV 1.134.2 ARMv7 client. **One installed Spotify app**, with the custom controls integrated into Spotify’s existing Settings/profile menu.
+**An open-source Android TV extension and patch project**, maintained by [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA), for the inspected Spotify TV 1.134.2 ARMv7 client. **One installed Spotify app**, with the custom controls integrated into Spotify’s existing Settings/profile menu.
 
 ## Download the latest build
 
@@ -38,6 +38,20 @@ Run `start-hush.ps1` from the extracted installer with `-Serial TV_IP:5555 -Adb 
 - **Integrated Hush:** the helper code ships inside Spotify’s APK. An authorized ADB setup starts a shell-owned helper process, which can survive Spotify’s force-stop and relaunch it. No companion app or Shizuku installation is required. Hush is opt-in; helper setup is required after a TV reboot or APK update. See [HUSH.md](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.2/HUSH.md).
 - **Existing features:** Spotify-only audio effects, local/LRCLIB lyrics, Aurora/Midnight/Ember appearance, artwork blur, motion, promotion hiding and sleep timer. The timer survives Spotify process restarts and clears on a TV reboot.
 
+## Fixes and improvements included in this build
+
+Version 1.3.0.2 packages the native-settings, EQ and Hush work introduced in 1.3.0.1, together with the rebuilt signed APK and simpler Windows update installer.
+
+- **Settings available on first navigation:** registers the native settings bridge before Spotify loads its TV page, with trusted-page checks when an action runs.
+- **Hush recovery state:** corrects the pending-recovery latch and retains cooldown, helper-readiness, pause and sleep-timer guards to limit repeated restart attempts.
+- **Persistent sleep timer:** retains the deadline across Spotify process restarts and clears it after a TV reboot.
+- **EQ migration and hardware mapping:** migrates the older five-band preferences and maps the ten displayed frequency controls onto the available hardware bands, with cached writes for unchanged settings.
+- **Signing script repaired:** passes the configured signing arguments to `apksigner`, allowing same-key signing and verification to complete.
+- **Simpler Windows updates:** ships the signed APK and ADB together, removes the Java/local-keystore requirement, and checks the APK hash using a Windows PowerShell-compatible implementation. Installation does not uninstall the app or reset its data.
+- **Earlier theme and performance fixes retained:** broader TV focus/action/progress theme coverage, promotion filtering that preserves unrelated playback controls, fewer repeated DOM scans and audio-effect writes, and cleanup of closed dialogs.
+
+These describe the implemented changes and automated checks. Real-device installation, audio, navigation and Hush behavior for 1.3.0.2 still need verification; see the validation notes below.
+
 ## Build from source
 
 The rebuilt **single APK** is labeled `1.3.0.2`. It retains Android versionCode `2340200` from the inspected client. This is a personal extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
@@ -56,8 +70,32 @@ The original four-APK source build is also supported by `build.ps1` with your ow
 
 The Windows release ZIP includes the signed APK and official ADB platform-tools. Extract it and run `Install-Spotify.cmd`; Java and a local signing key are not required. It verifies the APK checksum and updates without uninstalling or clearing app data.
 
-## Source and attribution
+## Open source and licenses
 
-Original UI, lyrics and audio implementation is MIT licensed. The helper sources/adaptations from [coldMEW/Hush](https://github.com/coldMEW/Hush), pinned to `4e9ded397338de5c69b1784c636feb3d34a8de01`, are GPL-3.0 and embedded with their full license/source notice. The ReVanced build host retains its GPL license. Clone with `--recurse-submodules` to obtain the pinned helper source. None of these licenses relicense Spotify’s proprietary code, assets or recordings.
+The extension, patch/build tooling, tests and helper adaptations are open source. You can inspect the [source for this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.2), report issues, and contribute changes under the applicable licenses.
+
+- **Original TV UI, lyrics and audio implementation:** [MIT License](LICENSE).
+- **Embedded Hush helper and adaptations:** GPL-3.0, with the [upstream source pinned in this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.2/hush) and [full license notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.2/assets/HUSH-COPYING.txt).
+- **Kotlin ReVanced host module:** [GPL-3.0-only](revanced/COPYING).
+
+Spotify's original application binaries, branding, artwork, music and recordings remain proprietary or owned by their respective rightsholders. The open-source licenses above apply to the relevant project code; they do not make the entire bundled Spotify APK open source or grant rights to third-party content.
+
+## Credits and acknowledgements
+
+Credit belongs to the developers and communities behind each respective project. Referencing them here acknowledges their work; it does not imply that they developed, endorsed or support this TV build.
+
+| Developer / project | Contribution or inspiration |
+| --- | --- |
+| [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA) | Maintains this Android TV project, TV integration, builds and installer. |
+| [Devon Shoutz / LeNerd46 — SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus) | Inspiration for themes, motion, sleep timer and custom lyrics. The upstream MIT notice is retained; mobile hooks, fonts and assets are not copied. |
+| [coldMEW — Hush](https://github.com/coldMEW/Hush) | Eight helper source files adapted from Hush 2.0.2, pinned at `4e9ded397338de5c69b1784c636feb3d34a8de01`, are embedded under GPL-3.0. |
+| [SideloadLabs — EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated) | Inspiration for optional lyrics-provider and presentation features. No Eevee code, binaries, assets or iOS hooks are incorporated. |
+| [Spicetify contributors](https://github.com/spicetify/cli) | Inspiration for CSS-based presentation customization. No Spicetify source, extensions or assets are bundled. |
+| [ReVanced developers](https://github.com/ReVanced/revanced-patcher) | Official patching framework used by the Kotlin build host, with pinned CLI tooling. |
+| [LRCLIB contributors](https://lrclib.net/docs) | Public API used by the independently implemented, optional manual lyrics lookup. Lyrics remain subject to rightsholders' rights and provider availability. |
+| [Apktool / iBotPeaches contributors](https://github.com/iBotPeaches/Apktool) and [REAndroid / APKEditor contributors](https://github.com/REAndroid/APKEditor) | APK decoding/rebuilding and split-merging tools used in the release build. |
+| [Android Open Source Project](https://source.android.com/) | Android SDK signing/alignment tools and official ADB platform-tools; bundled tool notices are retained. |
+
+See the [inspiration notes](assets/INSPIRATION.md), [SpotifyPlus MIT notice](assets/SPOTIFYPLUS-LICENSE.txt) and [Hush source notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.2/assets/HUSH-NOTICE.txt) for attribution details.
 
 The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotify’s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. Optional manual LRCLIB lookup sends song title, artist, album and duration to that provider; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).
