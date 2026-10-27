@@ -1,3 +1,14 @@
+# 1.3.0.5 verification - 27 October 2026
+
+- New regressions reproduced direct Upgrade activation and missing new palettes before implementation, then passed for click blocking, virtual-focus OK, Left/Right skipping, upsell-route redirection, account/Now Playing access, and Ocean/Rose/Solar colors.
+- Native bridge tests verify handled keys never replay and unhandled keys replay exactly once; Back and untrusted routes retain their boundaries. Existing settings/scroll, theme and efficiency regressions pass.
+- Same-key APK installed on Xiaomi TV as 1.3.0.5. Direct Upgrade click stayed on Home, forced upsell route redirected Home, and real remote Left/Right events skipped Upgrade and reached settings/account controls.
+- Real remote OK cycled all seven themes; the prior selection was restored.
+- Remote OK opened About. Developer Tumelo Rathebe / AlphadogRSA, public GitHub URL and version verified in native UI hierarchy.
+- QR generated offline and independently decoded both from the PNG asset and from the actual TV About screenshot to https://github.com/AlphadogRSA.
+- Signature/certificate, alignment and package metadata checks passed. Other installed apps unchanged; no uninstall or app-data clearing.
+- Audio response, full ad-recovery/queue behavior and account service compatibility were not retested in this update.
+
 # 1.3.0.4 UI verification - 27 October 2026
 
 - Regression fixtures first reproduced the outer-header scroll offset and the first-frame Upgrade control visibility, then passed with bounded inner scrolling and direct CSS hiding.

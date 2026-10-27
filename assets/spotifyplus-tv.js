@@ -1,7 +1,7 @@
 function(config) {
   'use strict';
   // Original TV presentation code. Existing artwork only; no media/account requests.
-  var VERSION = 6, ID = 'spotifyplus-tv-style';
+  var VERSION = 7, ID = 'spotifyplus-tv-style';
   var previous = window.__spotifyPlusTV;
   if (previous && previous.version === VERSION) return previous.configure(config);
   if (previous) {
@@ -42,7 +42,7 @@ function(config) {
   }
   function summary() { return 'tv-theme=' + cfg.theme + ';blur=' + (state.images.size + state.backgrounds.size) + ';hidden=' + state.hidden.size; }
   function css(c) {
-    var accents = [null, '#91e7cf', '#bbb3ff', '#ffbf98'], accent = accents[c.theme];
+    var accents = [null, '#91e7cf', '#bbb3ff', '#ffbf98', '#70c8ff', '#ff96b7', '#ffd166'], accent = accents[c.theme];
     var sheet = '.sptv-upgrade-hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}'
       + '.sptv-static{position:relative}.sptv-background{isolation:isolate!important;overflow:hidden!important}'
       + '.sptv-background:before{content:"";position:absolute;inset:-40px;z-index:-1;pointer-events:none;background-image:var(--sptv-art);background-size:cover;background-position:center;filter:blur(32px) brightness(.58);transform:scale(1.08);'
@@ -60,7 +60,7 @@ function(config) {
         + '.entity-list-row--focused{background-color:' + accent + '20!important}'
         + '.progress-bar__indicator,.progress-bar__scrubber__dot,.progress-indicator__bar,.equalizer--colored .equalizer__bar,.bars--green .bar,.checkbox--checked,.icon-button--primary.bg-green .icon-button__content,.button:not(.button--secondary):not(.button--tertiary) .button__content{background-color:' + accent + '!important}'
         + '.entity-list-row__title--playing,.playback-queue-item__title--current-track,.playback-queue-item__title--current-track .bars,.now-playing-bar__subtitle--green,.context-menu__icon--green,.icon-green svg.tv-icon,svg.tv-icon--green,svg.tv-icon.icon-check-green{color:' + accent + '!important}'
-        + '.context-menu{background-color:' + ['','#152927','#211f33','#30231e'][c.theme] + '!important}'
+        + '.context-menu{background-color:' + ['','#152927','#211f33','#30231e','#122738','#321a2a','#302719'][c.theme] + '!important}'
         + 'button:focus-visible,a:focus-visible,[role="button"]:focus-visible{outline-color:' + accent + '!important}';
     }
     if (c.largeLyrics) sheet += '[data-testid*="lyrics"] p,[data-testid*="lyrics"] [role="text"]{font-size:32px!important;line-height:1.55!important}';
@@ -213,7 +213,7 @@ function(config) {
     state.hidden.forEach(function(el) { el.classList.remove('sptv-upgrade-hidden'); }); clearArt();
   };
   state.configure = function(c) {
-    var next = { theme: Math.abs(Number(c.theme) || 0) % 4, blurArtwork: !!c.blurArtwork, hideUpgrade: !!c.hideUpgrade, motion: !!c.motion, largeLyrics: !!c.largeLyrics };
+    var next = { theme: Math.abs(Number(c.theme) || 0) % 7, blurArtwork: !!c.blurArtwork, hideUpgrade: !!c.hideUpgrade, motion: !!c.motion, largeLyrics: !!c.largeLyrics };
     var signature = JSON.stringify(next), nextArt = next.blurArtwork + ':' + next.hideUpgrade;
     if (key === signature) return summary();
     var first = !cfg, scan = first || nextArt !== artKey; cfg = next; key = signature; artKey = nextArt;

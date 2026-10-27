@@ -7,6 +7,7 @@ import unittest
 
 ROOT=Path(__file__).resolve().parents[1]
 STUBS={
+ 'android/webkit/ValueCallback.java':'package android.webkit; public interface ValueCallback<T> {void onReceiveValue(T value);}',
  'android/app/Activity.java':'package android.app; public class Activity { public boolean isFinishing(){return false;} }',
  'android/os/Looper.java':'package android.os; public class Looper { public static Looper getMainLooper(){return new Looper();} }',
  'android/os/Handler.java':'package android.os; public class Handler {public Handler(Looper l){} public void post(Runnable r){r.run();}}',
@@ -14,7 +15,7 @@ STUBS={
  'android/content/Context.java':'package android.content; public class Context {public android.content.res.AssetManager getAssets(){return new android.content.res.AssetManager();}}',
  'android/content/res/AssetManager.java':'package android.content.res; public class AssetManager { public java.io.InputStream open(String s){return new java.io.ByteArrayInputStream(new byte[0]);} }',
  'android/webkit/JavascriptInterface.java':'package android.webkit; public @interface JavascriptInterface {}',
- 'android/webkit/WebView.java':'package android.webkit; public class WebView {public String url;public Object bridge; public int registrations; public String getUrl(){return url;} public void addJavascriptInterface(Object b,String name){bridge=b;registrations++;} public android.content.Context getContext(){return new android.content.Context();} public String lastScript; public void evaluateJavascript(String code,Object callback){lastScript=code;} }',
+ 'android/webkit/WebView.java':'package android.webkit; public class WebView {public String url;public Object bridge; public int registrations; public String getUrl(){return url;} public void addJavascriptInterface(Object b,String name){bridge=b;registrations++;} public android.content.Context getContext(){return new android.content.Context();} public String lastScript; public String reply="false"; public void evaluateJavascript(String code,ValueCallback<String> callback){lastScript=code;if(callback!=null)callback.onReceiveValue(reply);} }',
  'dev/aurora/tvpatch/Hooks.java':'package dev.aurora.tvpatch; public class Hooks {public static int calls;public static android.app.Activity activeActivity(){return new android.app.Activity();} public static void settingsAction(android.app.Activity a,String s){calls++;} public static org.json.JSONObject settingsSnapshot(android.content.Context c){return new org.json.JSONObject();}}',
  'BridgeLifecycle.java':'''import dev.aurora.tvpatch.NativeSettings;import dev.aurora.tvpatch.Hooks;import android.webkit.WebView;
 public class BridgeLifecycle {public static void main(String[] a)throws Exception {
@@ -33,6 +34,10 @@ public class BridgeLifecycle {public static void main(String[] a)throws Exceptio
  String prior=v.lastScript;assert NativeSettings.remote(v,20,false);assert v.lastScript==prior : "Key-up must not move focus twice";
  assert !NativeSettings.remote(v,4,true) : "Back stays with Spotify";
  v.url="https://api-partner.spotify.com/tvapp#/home";assert !NativeSettings.remote(v,20,true) : "Home navigation stays with Spotify";
+ int[] replay={0};v.url="https://api-partner.spotify.com/tvapp#/view/home";
+ assert NativeSettings.navigation(v,22,true,()->replay[0]++);assert replay[0]==1 : "Unhandled native keys replay exactly once";
+ v.reply="true";assert NativeSettings.navigation(v,23,true,()->replay[0]++);assert replay[0]==1 : "Blocked Upgrade OK must never replay";
+ assert !NativeSettings.navigation(v,4,true,()->replay[0]++) : "Back stays native";
  v.url="https://example.com/#/profile";assert !NativeSettings.remote(v,20,true) : "Untrusted profile routes are rejected";
  System.out.println("Bridge lifecycle: first-load registration and invocation-time trust passed");
 }}''',

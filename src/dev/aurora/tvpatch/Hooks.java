@@ -70,6 +70,8 @@ public final class Hooks {
     private static String script;
     private static boolean longSelect;
     private static boolean forwardingKey;
+    private static boolean replayingNavigation;
+    private static final String VERSION = "1.3.0.5";
     private static KeyEvent selectDown;
     private static final AdMuteState AD_MUTE = new AdMuteState();
     private static volatile WeakReference<Object> volumeBridge = new WeakReference<>(null);
@@ -269,6 +271,12 @@ public final class Hooks {
             // Leave native dialogs alone; route profile-page navigation to our focus controller.
             if (a.hasWindowFocus() && NativeSettings.remote(web.get(), event.getKeyCode(),
                     event.getAction() == KeyEvent.ACTION_DOWN)) return true;
+            if (a.hasWindowFocus() && !replayingNavigation && NativeSettings.navigation(web.get(),event.getKeyCode(),
+                    event.getAction()==KeyEvent.ACTION_DOWN,() -> {
+                        if(a.isFinishing() || !a.hasWindowFocus())return;
+                        replayingNavigation=true;
+                        try { a.dispatchKeyEvent(new KeyEvent(event)); } finally { replayingNavigation=false; }
+                    })) return true;
             if (event.getKeyCode() == KeyEvent.KEYCODE_MENU || event.getKeyCode() == KeyEvent.KEYCODE_F1) {
                 if (event.getAction() == KeyEvent.ACTION_UP) showMenu(a);
                 return true;
@@ -355,7 +363,7 @@ public final class Hooks {
         return view;
     }
     private static int accent(Context context) {
-        return new int[]{0xff1ed760, MINT, 0xffbbb3ff, 0xffffbf98}[Math.floorMod(prefs(context).getInt("theme", 1), 4)];
+        return new int[]{0xff1ed760, MINT, 0xffbbb3ff, 0xffffbf98, 0xff70c8ff, 0xffff96b7, 0xffffd166}[Math.floorMod(prefs(context).getInt("theme", 1), 7)];
     }
     private static LinearLayout panel(Activity a) {
         LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(24, 20, 24, 20);
@@ -389,12 +397,12 @@ public final class Hooks {
         values.put("hushStatus", HushIntegration.status());
         values.put("audioStatus", AudioDsp.status());
         values.put("sleep", sleepAt > 0 ? "Active · survives Spotify restarts" : "Off");
-        values.put("version", "1.3.0.4");
+        values.put("version", VERSION);
         return values;
     }
     public static void settingsAction(Activity a, String action) {
         SharedPreferences p = prefs(a);
-        if (action.equals("theme")) p.edit().putInt("theme", (p.getInt("theme", 1) + 1) % 4).apply();
+        if (action.equals("theme")) p.edit().putInt("theme", (p.getInt("theme", 1) + 1) % 7).apply();
         else if (action.equals("blur")) p.edit().putBoolean("blurArtwork", !p.getBoolean("blurArtwork", true)).apply();
         else if (action.equals("motion")) p.edit().putBoolean("motion", !p.getBoolean("motion", true)).apply();
         else if (action.equals("promotions")) p.edit().putBoolean("hideUpgrade", !p.getBoolean("hideUpgrade", true)).apply();
@@ -406,11 +414,27 @@ public final class Hooks {
         else if (action.equals("audio")) showAudio(a);
         else if (action.equals("lyrics")) showLyrics(a);
         else if (action.equals("sleep")) showSleep(a);
-        else if (action.equals("about")) trackDialog(new AlertDialog.Builder(a).setTitle("Spotify+ TV · 1.3.0.1")
-            .setMessage("Graphic EQ, lyrics, artwork themes and integrated Hush helper.\n\nHush helper adapted from coldMEW/Hush 2.0.2 (GPL-3.0). Spotify's account and streaming behavior remain its own. Full source and notices are included in the project.")
-            .setPositiveButton("Close", null).create()).show();
+        else if (action.equals("about")) showAbout(a);
         else return;
         reapply();
+    }
+    private static void showAbout(Activity a) {
+        LinearLayout content=panel(a);
+        TextView developer=new TextView(a);developer.setTextColor(Color.WHITE);developer.setTextSize(22);
+        developer.setText("Developer: Tumelo Rathebe / AlphadogRSA\nhttps://github.com/AlphadogRSA\n\nScan to visit the developer's GitHub.");add(content,developer);
+        android.widget.ImageView qr=new android.widget.ImageView(a);
+        try(InputStream input=a.getAssets().open("developer-github-qr.png")) {
+            qr.setImageBitmap(android.graphics.BitmapFactory.decodeStream(input));
+        } catch(Exception error) { Log.w("SPTV","Developer QR asset unavailable"); }
+        qr.setContentDescription("QR code linking to https://github.com/AlphadogRSA");
+        qr.setBackgroundColor(Color.WHITE);
+        int size=(int)(220*a.getResources().getDisplayMetrics().density);
+        LinearLayout.LayoutParams imageParams=new LinearLayout.LayoutParams(size,size);imageParams.gravity=android.view.Gravity.CENTER_HORIZONTAL;imageParams.setMargins(0,16,0,16);
+        content.addView(qr,imageParams);
+        TextView credits=new TextView(a);credits.setTextColor(Color.WHITE);credits.setTextSize(16);
+        credits.setText("Open-source TV extension: MIT. Embedded Hush helper adapted from coldMEW/Hush 2.0.2 (GPL-3.0). Full developer credits and license notices are in the GitHub project. Spotify retains its own account and streaming behavior.");add(content,credits);
+        ScrollView scroll=new ScrollView(a);scroll.addView(content);
+        trackDialog(new AlertDialog.Builder(a).setTitle("Spotify+ TV - "+VERSION).setView(scroll).setPositiveButton("Close",null).create()).show();
     }
     private static void showSleep(Activity a) {
         trackDialog(new AlertDialog.Builder(a).setTitle("Sleep timer")
