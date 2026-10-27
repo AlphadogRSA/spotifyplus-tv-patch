@@ -56,10 +56,16 @@ function(config) {
     if(host.contains(document.activeElement))document.activeElement.blur();
     host.classList.remove('sptv-dom-navigation');
   }
+  function repairNavFocus(nav) {
+    var selector='button,[data-testid="now-playing-bar"],[role="button"]';
+    var marked=nav.querySelector('[class*="--focused"]');
+    var current=nav.contains(document.activeElement) ? document.activeElement : marked && (marked.closest(selector)||marked.querySelector(selector));
+    if(current && !visibleControl(current,nav))navigation('ArrowRight',true);
+  }
   function syncFocus() {
     var nav=navElement(), top=!!nav && nav.classList.contains('menu--focused');
     if(host)host.classList.toggle('sptv-settings-suspended',top);
-    if(top)releaseSettingsFocus();else clearNavFocus();
+    if(top){releaseSettingsFocus();repairNavFocus(nav);}else clearNavFocus();
   }
   var navObserver=new MutationObserver(syncFocus);
   function watchNav() {
@@ -82,7 +88,8 @@ function(config) {
   }
   function sync() {
     scheduled = false;
-    watchNav();
+    watchNav();disableUpgrade();
+    var topNav=navElement();if(topNav && topNav.classList.contains('menu--focused'))repairNavFocus(topNav);
     var next = profileVisible() ? document.querySelector('[data-testid="profile-menu"],.profile__menu') : null;
     if (!next) { cleanHost();return; }
     if (!section || section.parentNode !== next) {
@@ -152,6 +159,27 @@ function(config) {
       event.preventDefault();event.stopImmediatePropagation();
     }
   }
+  function disableUpgrade() {
+    var nav=navElement();if(!nav)return;
+    Array.prototype.forEach.call(nav.querySelectorAll('[data-testid="upsell-menu-item"]'),function(e){
+      if(!e.disabled)e.disabled=true;
+      if(e.tabIndex!==-1)e.tabIndex=-1;
+      if(!e.hidden)e.hidden=true;
+      if(e.getAttribute('aria-hidden')!=='true')e.setAttribute('aria-hidden','true');
+      if(!e.hasAttribute('inert'))e.setAttribute('inert','');
+    });
+  }
+  function visibleControl(e,nav) {
+    if(e.matches(upgradeSelector) || e.disabled || e.getAttribute('aria-disabled')==='true')return false;
+    for(var node=e;node;node=node.parentElement) {
+      if(node.hidden || node.hasAttribute('inert') || node.getAttribute('aria-hidden')==='true')return false;
+      var style=getComputedStyle(node);
+      if(style.display==='none' || style.visibility==='hidden' || style.visibility==='collapse' || Number(style.opacity)===0)return false;
+      if(node===nav)break;
+    }
+    var rect=e.getBoundingClientRect();
+    return rect.width>0 && rect.height>0 && rect.left>=-1 && rect.top>=-1 && rect.right<=innerWidth+1 && rect.bottom<=innerHeight+1;
+  }
   function navigation(key,down) {
     if(upgradeRoute())return true;
     var nav=navElement();
@@ -161,21 +189,24 @@ function(config) {
       return false;
     }
     if(!nav.classList.contains('menu--focused') && !nav.contains(document.activeElement))return false;
-    releaseSettingsFocus();
+    releaseSettingsFocus();disableUpgrade();
     if(key!=='ArrowLeft' && key!=='ArrowRight' && key!=='Enter')return false;
     if(!down)return true;
     var navControls='button,[data-testid="now-playing-bar"],[role="button"]';
     var all=Array.prototype.slice.call(nav.querySelectorAll(navControls));
-    var controls=all.filter(function(e){return !e.matches(upgradeSelector) && !e.disabled;});
+    var eligible=all.filter(function(e){return visibleControl(e,nav);});
+    var controls=eligible.filter(function(e){return !eligible.some(function(parent){return parent!==e && parent.contains(e);});});
+    if(!controls.length){lastNav=null;clearNavFocus();return true;}
     var current=document.activeElement;
     if(all.indexOf(current)<0) {
       var marked=nav.querySelector('[class*="--focused"]');current=marked && (marked.closest(navControls) || marked.querySelector(navControls));
     }
-    if(!current)current=lastNav && lastNav.isConnected && nav.contains(lastNav) ? lastNav : nav.querySelector('[data-testid="top-menu--home"]') || controls[0];
+    if(!current)current=controls.indexOf(lastNav)>=0 ? lastNav : controls.filter(function(e){return e.dataset.testid==='top-menu--home';})[0] || controls[0];
     var index=controls.indexOf(current), next;
-    if(current && current.matches(upgradeSelector)) {
+    if(current && controls.indexOf(current)<0) {
       var origin=all.indexOf(current), direction=key==='ArrowLeft' ? -1 : 1;
       for(var i=origin+direction;i>=0 && i<all.length;i+=direction)if(controls.indexOf(all[i])>=0){next=all[i];break;}
+      if(!next)for(var back=origin-direction;back>=0 && back<all.length;back-=direction)if(controls.indexOf(all[back])>=0){next=all[back];break;}
       next=next || controls[0];
     } else if(key==='Enter') {
       if(current && controls.indexOf(current)>=0){lastNav=current;current.click();}

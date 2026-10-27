@@ -1,3 +1,12 @@
+# 1.3.0.7 visible-navigation verification - 27 October 2026
+
+- Regression fixtures reproduced hidden/transparent/offscreen focus and an unrepaired native Upgrade position, then passed after visibility filtering, endpoint clamping and menu-entry focus repair.
+- Browser tests verify dynamic removal of the selected control, Upgrade disabled/tabIndex -1/aria-hidden, preserved account/Now Playing access, Settings/Home focus handoff and bounded scrolling. Theme and efficiency regressions passed.
+- Same-key 1.3.0.7 installed on Xiaomi TV. Eleven actual Right presses and eleven Left presses kept selected controls visible and clamped at Account and Now Playing.
+- Simulated Spotify's remembered Upgrade focus at menu entry; it immediately moved to a visible control. Upgrade was disabled, hidden, excluded from tab order and computed to display:none.
+- Home still activated. No uninstall or data clearing; pre/post third-party package lists unchanged. Helper startup requested after update.
+- Final APK signatures/certificate and alignment, installer validation and archive integrity checked. Audio response and full Hush recovery were not retested.
+
 # 1.3.0.6 focus-handoff verification - 27 October 2026
 
 - Regression test first reproduced Home OK being swallowed by a profile setting. Further cases reproduced stale unmarked header focus on profile reentry and a dialog consuming the prior OK release.

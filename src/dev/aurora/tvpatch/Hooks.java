@@ -71,7 +71,7 @@ public final class Hooks {
     private static boolean longSelect;
     private static boolean forwardingKey;
     private static boolean replayingNavigation;
-    private static final String VERSION = "1.3.0.6";
+    private static final String VERSION = "1.3.0.7";
     private static KeyEvent selectDown;
     private static final AdMuteState AD_MUTE = new AdMuteState();
     private static volatile WeakReference<Object> volumeBridge = new WeakReference<>(null);

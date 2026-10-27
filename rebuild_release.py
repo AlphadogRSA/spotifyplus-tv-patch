@@ -1,4 +1,4 @@
-"""Rebuild the exact previous TV release as one unsigned 1.3.0.6 APK.
+"""Rebuild the exact previous TV release as one unsigned 1.3.0.7 APK.
 
 Requires compiled extension DEX and the checksum-pinned APK tooling. No signing keys are read.
 """
@@ -17,7 +17,7 @@ TOOL_SHA={
  'apktool':'dbf930b076c6b9be08d57c449cacefc3bdd6b71ebd59b3066fc0e1f5b14f9423',
  'apkeditor':'a9cd40df818845456be6d696de6110c89edf4b0a0580cb83438ed6b25a366e67',
 }
-VERSION='1.3.0.6'
+VERSION='1.3.0.7'
 def verified(path,sha):
  if hashlib.sha256(path.read_bytes()).hexdigest()!=sha:raise ValueError(f'Checksum mismatch: {path.name}')
 def run(*args):subprocess.run(list(map(str,args)),check=True)
