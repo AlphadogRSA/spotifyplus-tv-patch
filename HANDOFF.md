@@ -1,30 +1,31 @@
-# Handoff
+# Current update: 1.3.0.9
 
-## Current release: 0.5
+Spotify+ menu now inherits native Spotify list styles (10 rows). Experimental unstable lyrics integration retired, including polling/provider/import code; existing user files left untouched. Search/text keys bypass async routing and long-OK interception with paired release handling. Hidden settings skip refresh and unrelated Home mutations skip rescans. TV keyboard opened in three focused-input trials (3.12/2.53/2.23 seconds including ADB overhead); some Android startup delay remains. See VERIFICATION.md for scope and tests.
 
-The 0.5 follow-up fixes themes against verified TV class selectors, expands promotion/Upgrade hiding and optimizes DOM scanning, playback callbacks, dialog cleanup and DSP writes. See VERIFICATION.md for the measured checks. It keeps all 0.4 functions and persisted settings. The remote theme cycle and Spotify-only audio activation were observed after installing 0.5.
+Keep verified app fixes documented and publish matching source, APK and Windows installer to GitHub, per maintainer workflow. Preserve installed data and unrelated apps. Do not claim performance improvements without measurements; retain attribution and licenses.
 
-The default build now uses modular Kotlin ReVanced patches and a precompiled MIT extension DEX. It adds default-on recognized-ad muting, Upgrade-button hiding, Spotify-style accents and background blur, polished TV labels, and per-process/session EQ plus 0–6 dB boost. There is no shared-output/session-0 effect path. See AUDIO.md for one-time ADB diagnostic permission setup. `install.ps1` installs all four APKs, grants that permission and launches the client. The same retained private key was used for updates; no uninstall was used for 0.4. The user paired Spotify again during testing.
+# Previous update: 1.3.0.8
 
-The final four-APK build is specific to the inspected Spotify TV 1.134.2 ARMv7/English/TV-density installation. Source archives and the private GitHub release exclude the local signing key, original-install backup, account data, fetched lyrics and user screenshots. The release installation archive necessarily includes the patched proprietary app and required splits for this installation; the MIT license does not relicense those binaries.
+Home blur now adds an isolated halo behind native artwork and never uses page-level/native Home wrappers as a clipped fallback. Loading/fade-in, toggle cleanup and native geometry verified. PanelUi provides the EQ-style navy/blue native frame, buttons and dialogs; settings cards match. Final native panels and QR visually/device tested.
 
-This repository contains only the original TV extension and build/test tools. The proprietary original APKs, patched APK set, account data, signing key and fetched lyrics are intentionally excluded.
+# Previous update: 1.3.0.7
 
-## Completed
+Home navigation now includes only visible eligible controls, clamps at visible endpoints, disables Upgrade for focus/accessibility, and repairs a remembered Upgrade position on menu entry. Verified actual remote traversal and Home activation on the Xiaomi TV.
 
-- Version-pinned injection into the inspected Spotify TV 1.134.2 client.
-- Native D-pad menu, three themes, cinematic motion toggle, own-session sleep timer and private local LRC import.
-- Lyrics update 0.2: manual public LRCLIB lookup, timed and plain results, per-track in-memory cache, local-file precedence, font sizes and timing offset.
-- Background lookup, bounded response size, request cooldown, connect/read timeouts and an overall watchdog.
-- Reproducible four-APK build/signing script, original input hashes, deterministic tests and CI workflow.
-- Independent source/attribution notices; no Eevee implementation or assets copied.
+# Previous update: 1.3.0.6
 
-## Next device checks
+Shared key routing fixes stale Spotify+ selection and missed Home OK. Native dialogs no longer leave a release state that swallows the next press. Verified three About/Home cycles plus remote top-menu handoff; current source/build remains on feat/hush-tv.
 
-The new **Lyrics · local / LRCLIB** panel was observed fetching and displaying timed lyrics for a real signed-in track. Continue testing provider coverage, track changes while fetching, local precedence, pause/seek/resume, timing offsets, long-running drift and D-pad scrolling of plain lyrics. See VERIFICATION.md for exactly which checks ran.
+# Previous update: 1.3.0.5
 
-## Building and updating
+Upgrade UI activation is blocked at click, native remote navigation and SPA upsell-route levels. About includes Tumelo Rathebe / AlphadogRSA with an offline GitHub QR. Theme cycling now includes Ocean, Rose and Solar, preserving existing theme indices. The installed same-key build and QR screenshot were verified on the TV.
 
-Use the original four installation APKs from your own TV and the private signing key retained locally. `build.ps1` verifies their hashes and produces a fully signed four-APK set. Updating with the same key preserves the current app's data; a different key normally requires reinstalling and signing in again. Do not install just the base APK or mix certificates across splits.
+# Handoff Â· Spotify+ TV 1.3.0.1
 
-The extension's added network request is only the explicit LRCLIB lookup; no Spotify login credentials or entitlement values are processed by it. The runtime and its tests remain MIT licensed; the ReVanced host module is GPL-3.0-only under revanced/COPYING. See README.md, LYRICS.md and assets/INSPIRATION.md for scope and notices.
+User requirements: one Spotify APK, integrated Hush functionality, reference-style graphic EQ, and all custom controls inside Spotifyâ€™s existing settings panel.
+
+Implemented: native `/profile` settings host integration using observed `profile-menu`/`profile-menu-item` and `top-menu--settings` selectors; restricted JavaScript settings bridge; native graphic EQ and migration; embedded pinned Hush helper/provider with fixed restart command; persisted sleep/recovery state; single unsigned APK rebuild and retained-key signing/install scripts.
+
+The rebuilt file still targets the inspected ARMv7/English/TV-density installation, with versionName `1.3.0.1` and original versionCode `2340200`. The source repo excludes private signing material. An unsigned build is not an installable same-key update. No installation or live-TV verification for this version is claimed. Earlier 0.5 observations remain historical in VERIFICATION.md.
+
+Read HUSH.md for setup and recovery limitations, README.md for build/install scope, and the current plan/spec under docs/superpowers. The native Settings selectors were verified against Spotifyâ€™s delivered Android TV web UI `ad3ec52`; future remotely delivered UI changes may need selector updates.

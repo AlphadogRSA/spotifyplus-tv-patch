@@ -1,0 +1,3 @@
+[submodule "hush/upstream"]
+	path = hush/upstream
+	url = https://github.com/coldMEW/Hush.git

@@ -6,6 +6,8 @@ import app.revanced.patcher.extensions.*
 import app.revanced.patcher.patch.*
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -15,13 +17,20 @@ import org.w3c.dom.Element
 private const val PACKAGE = "com.spotify.tv.android"
 private const val VERSION = "1.134.2"
 
-val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import", use = false) {
+val tvManifestPatch = resourcePatch(name = "TV app label and helper diagnostics", use = false) {
     compatibleWith(PACKAGE(VERSION))
     apply {
         document("AndroidManifest.xml").use { doc ->
             val app = doc.getElementsByTagName("application").item(0) as Element
             val android = "http://schemas.android.com/apk/res/android"
             app.setAttributeNS(android, "android:label", "Spotify+ TV")
+            doc.documentElement.setAttributeNS(android, "android:versionName", "1.3.0.1")
+            val provider = doc.createElement("provider")
+            provider.setAttributeNS(android, "android:name", "dev.aurora.tvpatch.hush.HelperProvider")
+            provider.setAttributeNS(android, "android:authorities", "com.spotify.tv.android.sptv_hush_helper")
+            provider.setAttributeNS(android, "android:exported", "true")
+            provider.setAttributeNS(android, "android:permission", "android.permission.INTERACT_ACROSS_USERS_FULL")
+            app.appendChild(provider)
             app.setAttributeNS(android, "android:debuggable", "true")
             val activities = doc.getElementsByTagName("activity")
             for (i in 0 until activities.length) {
@@ -45,7 +54,7 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
 val tvAssetsPatch = rawResourcePatch(name = "TV theme assets and notices", use = false) {
     compatibleWith(PACKAGE(VERSION))
     apply {
-        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md")) {
+        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md", "spotifyplus-settings.js", "HUSH-NOTICE.txt", "HUSH-COPYING.txt")) {
             val target = get("assets/$name", false)
             target.parentFile.mkdirs()
             requireNotNull(object {}.javaClass.classLoader.getResourceAsStream(name)) { "Missing bundled asset $name" }.use { input ->
@@ -109,10 +118,37 @@ val tvRemotePatch = bytecodePatch(name = "TV remote settings menu", use = false)
 val tvWebViewPatch = bytecodePatch(name = "TV WebView theme hook", use = false) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(tvLifecyclePatch, tvAssetsPatch)
-    apply { resolve(Fingerprints.page).addInstruction(0, "invoke-static/range {p1 .. p1}, $HOOK->page(Landroid/webkit/WebView;)V") }
+    apply {
+        resolve(Fingerprints.page).addInstruction(0, "invoke-static/range {p1 .. p1}, $HOOK->page(Landroid/webkit/WebView;)V")
+        var count = 0
+        for (definition in classDefs.filter { it.type.startsWith("Lcom/spotify/tv/") }) {
+            val candidates = definition.methods.filter { method ->
+                method.implementation?.instructions?.any {
+                    val ref = (it as? ReferenceInstruction)?.reference as? MethodReference
+                    ref?.definingClass == "Landroid/webkit/WebView;" && ref.name == "loadUrl"
+                } == true
+            }
+            if (candidates.isEmpty()) continue
+            val mutable = classDefs.getOrReplaceMutable(definition)
+            for (original in candidates) {
+                val method = mutable.methods.single { it.name == original.name && it.parameterTypes == original.parameterTypes && it.returnType == original.returnType }
+                val calls = method.implementation!!.instructions.withIndex().filter {
+                    val ref = (it.value as? ReferenceInstruction)?.reference as? MethodReference
+                    ref?.definingClass == "Landroid/webkit/WebView;" && ref.name == "loadUrl"
+                }
+                for (call in calls.asReversed()) {
+                    val register = (call.value as? FiveRegisterInstruction)?.registerC
+                        ?: (call.value as RegisterRangeInstruction).startRegister
+                    method.addInstruction(call.index, "invoke-static/range {v$register .. v$register}, $HOOK->beforeLoad(Landroid/webkit/WebView;)V")
+                    count++
+                }
+            }
+        }
+        require(count == 2) { "Expected two verified pre-navigation WebView loads, found $count" }
+    }
 }
 
-val tvSessionPatch = bytecodePatch(name = "TV own-session lyrics and timer", use = false) {
+val tvSessionPatch = bytecodePatch(name = "TV own-session audio and timer", use = false) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(runtimePatch)
     apply {
@@ -145,8 +181,8 @@ val tvAdMutePatch = bytecodePatch(name = "TV detected-ad muting", use = false) {
 }
 
 val spotifyPlusTvPatch = bytecodePatch(
-    name = "SpotifyPlus TV interface and lyrics",
-    description = "TV remote menu, themes, local/LRCLIB lyrics and own-session sleep timer. No account entitlement changes.",
+    name = "SpotifyPlus TV interface",
+    description = "TV remote menu, themes, graphic EQ and own-session sleep timer. No account entitlement changes.",
 ) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(tvRemotePatch, tvWebViewPatch, tvSessionPatch, tvAdMutePatch)

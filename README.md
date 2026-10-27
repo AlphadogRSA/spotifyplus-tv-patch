@@ -1,128 +1,67 @@
-# Spotify+ TV 1.3.0.8
+# Spotify+ TV 1.3.0.9
 
-**An open-source Android TV extension and patch project**, maintained by [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA), for the inspected Spotify TV 1.134.2 ARMv7 client. **One installed Spotify app**, with the custom controls integrated into Spotify’s existing Settings/profile menu.
+**An open-source Android TV extension and patch project**, maintained by [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA), for the inspected Spotify TV 1.134.2 ARMv7 client. Custom controls live inside Spotify's existing Settings/profile menu.
 
 ## Download the latest build
 
-**[Latest release: Spotify+ TV 1.3.0.8](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/latest)** · Built 27 October 2026
+**[Latest release: Spotify+ TV 1.3.0.9](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/latest)** · Built 27 October 2026
 
-- [Download the signed Android TV APK](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.8/SpotifyPlus-TV-1.3.0.8.apk)
-- [Download the Windows installer ZIP](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.8/SpotifyPlus-TV-1.3.0.8-Windows-Installer.zip)
-- [SHA-256 checksums](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.8/SHA256SUMS.txt)
+- [Signed Android TV APK](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.9/SpotifyPlus-TV-1.3.0.9.apk)
+- [Windows installer ZIP](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.9/SpotifyPlus-TV-1.3.0.9-Windows-Installer.zip)
+- [SHA-256 checksums](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.9/SHA256SUMS.txt)
 
-This is an unofficial build for the inspected **ARMv7 Android TV** installation of Spotify TV 1.134.2 (`com.spotify.tv.android`). The APK combines the ARMv7, English and TV-density splits into one installable file; it is not universal across TV architectures. The Windows package installs the app on your TV through ADB; it is not a Windows Spotify app.
+This unofficial APK targets the inspected **ARMv7 Android TV** installation of Spotify TV 1.134.2 (`com.spotify.tv.android`). It merges ARMv7, English and TV-density splits into one file. The Windows package installs on a TV through ADB; it is not a Windows Spotify client.
+
+## New and fixed in 1.3.0.9
+
+- **Native Spotify menu appearance:** ten Spotify+ rows reuse Spotify's own list buttons, typography, subtitle and focus styles instead of custom cards. The EQ-style native dialogs remain for EQ, Sleep, Hush Setup and About.
+- **Experimental lyrics retired:** the unstable experimental lyrics feature has been removed to simplify setup and maintenance. Its menu, provider network requests, parser, dialogs and polling are gone. Existing app data is preserved; old imported files are simply unused.
+- **Faster input path:** Search/text input bypasses the extension's asynchronous key-routing and long-OK interception. A menu-to-Search press still receives its matching key release. Android keeps control of the keyboard and typing.
+- **Less background work:** hidden settings skip state refreshes; focus mode is cached and reported only when it changes. Unrelated Home artwork/card mutations no longer rescan settings. Removing lyrics also removes its playback-metadata polling and worker.
+- **Previous fixes retained:** bounded settings scrolling, Settings/Home focus handoff, visible-only navigation with Upgrade blocked, separate Home artwork blur halo, seven themes and the developer GitHub QR.
+
+**TV verification:** installed as a same-key update with app data retained. Keyboard opening succeeded in three focused-Search trials at 3.12, 2.53 and 2.23 seconds, including ADB command and status-query overhead. These are device observations, not a controlled speed comparison or a claim that Android keyboard startup is instantaneous. Audio output, timer expiration and full Hush recovery still require separate playback testing. See [VERIFICATION.md](VERIFICATION.md).
+
+## Current features
+
+- Appearance: Spotify original, Aurora, Midnight, Ember, Ocean, Rose and Solar; artwork blur and cinematic motion.
+- Spotify-only graphic EQ: ten frequency controls, connected curve, hardware-band mapping, +/-6 dB EQ and 0-6 dB post-gain. Existing settings migrate once.
+- Opt-in player-local ad muting and integrated [Hush helper](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.9/HUSH.md). The embedded helper needs authorized ADB setup after an APK update or TV reboot.
+- Sleep timer, retained across Spotify process restarts and cleared on TV reboot.
+- About with developer credit and offline GitHub QR. Menu/F1 or hold OK outside text entry opens Spotify's Settings.
+
+Upgrade's promotional UI is excluded from navigation, direct activation and its upsell route. This changes the interface without changing account subscriptions or streaming entitlements.
 
 ## Install or update from Windows
 
 1. Download and extract the entire Windows installer ZIP.
-2. Enable debugging on the TV and connect the PC and TV to the same network.
-3. Double-click **Install-Spotify.cmd**. Enter the TV IP address when prompted and accept the TV debugging authorization.
-4. The installer checks the APK checksum, updates Spotify, grants the audio diagnostic permission, launches the app and starts the embedded Hush helper.
+2. Enable TV debugging and connect the PC and TV to the same network.
+3. Double-click **Install-Spotify.cmd**, enter the TV IP address and accept the TV authorization prompt.
+4. The installer checks the APK checksum, updates Spotify, grants the audio diagnostic permission, launches the app and starts its embedded helper.
 
-The package includes the signed APK and official Android platform-tools. No Java installation, private signing key or administrator access is required. Updates use `adb install -r` without uninstalling Spotify or clearing app data. Updating an existing installation requires a matching signing certificate; if Android rejects the update, keep the existing app and inspect the error before taking further action.
-
-For manual installation with an authorized ADB connection:
+The package contains the signed APK and official Android platform-tools. No Java, local signing key or administrator access is required. Updates use `adb install -r` without uninstalling or clearing app data. A certificate mismatch stops installation; keep the existing app and inspect that error.
 
 ```powershell
-adb -s TV_IP:5555 install -r SpotifyPlus-TV-1.3.0.8.apk
+adb -s TV_IP:5555 install -r SpotifyPlus-TV-1.3.0.9.apk
 adb -s TV_IP:5555 shell pm grant com.spotify.tv.android android.permission.DUMP
 adb -s TV_IP:5555 shell am start -W -n com.spotify.tv.android/.SpotifyTVActivity
 ```
 
-Run `start-hush.ps1` from the extracted installer with `-Serial TV_IP:5555 -Adb .\tools\platform-tools\adb.exe` to start the helper after manual installation or a TV reboot. Hush is opt-in; enable it in Spotify's settings.
-
-## Features in 1.3.0.8
-
-- **Native settings:** appearance, artwork blur, motion, promotion hiding, player-local ad muting, Hush, EQ, lyrics and sleep timer. The existing Spotify rows stay in place. Menu/F1 or hold OK opens Spotify’s own Settings screen.
-- **Graphic EQ:** dark rounded panel, blue vertical controls and connected curve inspired by the supplied reference. Ten frequency points from 31 Hz to 16 kHz map logarithmically onto the output’s available hardware bands. EQ stays ±6 dB; post-gain stays 0–6 dB. Existing five-band settings migrate once. Left/Right selects, Up/Down adjusts, OK moves to post-gain and then toolbar, Back closes.
-- **Integrated Hush:** the helper code ships inside Spotify’s APK. An authorized ADB setup starts a shell-owned helper process, which can survive Spotify’s force-stop and relaunch it. No companion app or Shizuku installation is required. Hush is opt-in; helper setup is required after a TV reboot or APK update. See [HUSH.md](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.8/HUSH.md).
-- **Existing features:** Spotify-only audio effects, local/LRCLIB lyrics, Aurora/Midnight/Ember/Ocean/Rose/Solar appearance, artwork blur, motion, promotion hiding and sleep timer. The timer survives Spotify process restarts and clears on a TV reboot.
-
-## New and fixed in 1.3.0.8
-
-- **Home artwork blur repaired:** native artwork containers, gradients, sharp foreground images and page layout remain intact. A separate decorative halo sits behind the displayed Home artwork, including during loading/fade-in, instead of clipping the page or substituting unrelated cover art.
-- **Clean blur toggles:** disabling blur removes the added halo without changing native positioning or overflow. Repeated application does not duplicate it.
-- **EQ-style Spotify+ panels:** shared dark navy rounded frames, subtle borders, blue focus controls, consistent Close buttons and clearer headings across EQ, Lyrics, Sleep Timer, Hush Setup and About. Settings rows use matching cards and more readable labels.
-- **Lyrics UI improved:** empty lyric rows no longer leave a large blank panel, Close is in the header, and unavailable actions are visually muted. Plain lyrics use the shared frame and allow returning to Close from the top of the scroll view.
-- Existing seven themes, developer GitHub QR, visible-only Home navigation and Settings/Home focus fixes are retained.
-
-**Verified on the TV:** toggled blur on and off with unchanged native artwork geometry and header position, confirmed clean halo removal, and opened/closed EQ, Lyrics, Sleep, Hush Setup and About with the remote. The updated About QR decoded correctly from the TV screenshot. Your original blur preference was restored and other installed apps were unchanged.
-
-## Visible navigation fix retained from 1.3.0.7
-
-- **Visible controls only:** Home's remote navigation skips Upgrade and hidden, transparent, disabled, off-screen or duplicate nested controls.
-- **Visible endpoints:** Left stops at the first visible control and Right stops at the last. There are no extra invisible Upgrade stops beyond the buttons shown on screen.
-- **Upgrade removed from focus:** its control is disabled, hidden, inert, excluded from tab order and marked hidden for accessibility. This block stays in place even when other promotion filtering is disabled.
-- **Remembered focus repaired:** entering the top menu with Spotify's old Upgrade position moves focus immediately to an available visible control. Visibility is checked again for each navigation action.
-
-**Verified on the TV:** 11 Right and 11 Left remote presses stayed on visible controls and stopped at Account and Now Playing respectively. A remembered Upgrade position redirected to a visible control, and Home still activated. Existing Settings/Home fixes, seven themes and developer QR are retained.
-
-## Settings/Home fixes retained from 1.3.0.6
-
-- **Reliable Settings to Home navigation:** top-menu actions take priority over the profile list, so OK on Home activates Home instead of an old settings selection.
-- **Stale selection cleared:** leaving the Spotify+ list clears its browser focus and suppresses the old profile highlight while the top menu has focus. Reopening Settings also clears leftover header focus.
-- **Up returns to the top menu:** moving above the first native profile row hands navigation back to Spotify.
-- **Dialog and key-release handling:** opening and closing a settings dialog does not swallow the next Home press; handled and delegated presses retain matching release behavior.
-
-**Verified on the TV:** three About-to-Home cycles, exactly one Home activation per press, remote Up/Left/Right handoff to Home, cleared profile highlighting and preserved Upgrade blocking. Existing themes, developer QR, settings scrolling and app data are retained.
-
-## Features retained from 1.3.0.5
-
-- **Upgrade UI blocked:** the remote skips Upgrade in the top menu; direct clicks are stopped and opening the native `#/upsell` route returns Home. This blocks the promotional interface, without changing subscriptions or streaming entitlements.
-- **Developer About panel:** shows **Tumelo Rathebe / AlphadogRSA**, [github.com/AlphadogRSA](https://github.com/AlphadogRSA), and a bundled offline QR code linking to that profile. The displayed app version now follows the build version.
-- **Three new themes:** Ocean (blue), Rose (pink) and Solar (gold), alongside Spotify original, Aurora, Midnight and Ember. Appearance cycles through all seven; existing saved choices keep their original indices.
-- **Original navigation retained:** Now Playing, Home, Search, Library, settings and the account control remain reachable; native dialogs retain their own controls.
-
-**Verified on the TV:** Upgrade click and route blocking, remote navigation skipping Upgrade, all seven theme choices and restoration of the previous selection, the developer credit and a QR decoded directly from the About screenshot. Existing settings-scroll checks and browser/native regression tests pass.
-
-## Settings scrolling fix retained from 1.3.0.4
-
-- **Stable settings-page layout:** moving through settings scrolls only the settings list. Focusing a row no longer scrolls Spotify's outer page or leaves the top navigation clipped when returning Home.
-- **Viewport-sized settings list:** the list fits below its current screen position, with a margin around the selected control.
-- **Upgrade entry hidden immediately:** when Hide promotions is enabled, the main Upgrade/upsell control is hidden by CSS before observer-based filtering runs, including newly recreated controls. Home, Search, Library and account controls remain available.
-- Updated the public project description and project-authored documentation wording. Original third-party license text is preserved.
-
-**Verified on the Xiaomi TV:** all 11 rows were reached with remote key events, the header position stayed unchanged through a full scroll and after returning Home, and main Upgrade controls had no rendered area. Same-key installation retained app data; other installed apps were unchanged.
-
-## Remote-navigation bugfix retained from 1.3.0.3
-
-Fixed the issue where the new Spotify+ TV settings appeared but could not be reached with the TV remote. Spotify handles D-pad input through its native bridge, so ordinary browser keyboard listeners did not receive those events.
-
-- Routes native Up/Down and OK events to the settings focus controller on the profile page.
-- Moves between Spotify's original controls and all 11 custom rows, with scrolling to keep the selected row visible.
-- Leaves native dialog controls and navigation outside the profile page with Spotify.
-- Corrects the version displayed in About and the Ember settings-accent color.
-- Adds regression coverage for virtual focus, native key routing, key-up handling and trusted-page boundaries.
-
-**Previous 1.3.0.3 verification on the Xiaomi TV:** installed 1.3.0.3 as a same-key update, reached all 11 rows using real ADB D-pad key events, and opened the native graphic EQ panel with OK. Existing app data and other installed apps were preserved. Sound quality and Hush ad-recovery behavior still need separate playback testing.
-
-## Earlier fixes and improvements retained
-
-Version 1.3.0.2 introduced the signed single-APK Windows package for the native-settings, EQ and Hush work in 1.3.0.1. Version 1.3.0.8 retains these improvements.
-
-- **Settings available on first navigation:** registers the native settings bridge before Spotify loads its TV page, with trusted-page checks when an action runs.
-- **Hush recovery state:** corrects the pending-recovery latch and retains cooldown, helper-readiness, pause and sleep-timer guards to limit repeated restart attempts.
-- **Persistent sleep timer:** retains the deadline across Spotify process restarts and clears it after a TV reboot.
-- **EQ migration and hardware mapping:** migrates the older five-band preferences and maps the ten displayed frequency controls onto the available hardware bands, with cached writes for unchanged settings.
-- **Signing script repaired:** passes the configured signing arguments to `apksigner`, allowing same-key signing and verification to complete.
-- **Simpler Windows updates:** ships the signed APK and ADB together, removes the Java/local-keystore requirement, and checks the APK hash using a Windows PowerShell-compatible implementation. Installation does not uninstall the app or reset its data.
-- **Earlier theme and performance fixes retained:** broader TV focus/action/progress theme coverage, promotion filtering that preserves unrelated playback controls, fewer repeated DOM scans and audio-effect writes, and cleanup of closed dialogs.
-
-These describe the implemented changes and automated checks. Installation and remote navigation were verified for 1.3.0.8; audio and Hush behavior still need playback verification.
+After manual installation or a TV reboot, run `start-hush.ps1 -Serial TV_IP:5555 -Adb .\tools\platform-tools\adb.exe` from the extracted installer. Hush remains opt-in.
 
 ## Build from source
 
-The rebuilt **single APK** is labeled `1.3.0.8`. It retains Android versionCode `2340200` from the inspected client. This is a extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
+The rebuilt **single APK** is labeled `1.3.0.9`. It retains Android versionCode `2340200` from the inspected client. This is a extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
 
-The source matching this release is available at **[tag v1.3.0.8](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.8)** and on `feat/hush-tv`. The default branch has not yet merged the feature implementation. To obtain the matching source and pinned helper:
+The source matching this release is available at **[tag v1.3.0.9](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.9)** and on `feat/hush-tv`. The default branch has not yet merged the feature implementation. To obtain the matching source and pinned helper:
 
 ```powershell
-git clone --branch v1.3.0.8 --recurse-submodules https://github.com/AlphadogRSA/spotifyplus-tv-patch.git
+git clone --branch v1.3.0.9 --recurse-submodules https://github.com/AlphadogRSA/spotifyplus-tv-patch.git
 ```
 
 `rebuild_release.py` verifies the exact previous v0.5 installation archive, replaces only the extension definitions/assets, adds the guarded embedded helper provider, updates the version name and merges the split resources/libraries. It produces an **unsigned APK**, which must be signed with the existing retained key to update your installed app. The original key is not stored here. Use `sign-apk.ps1`; do not uninstall or clear data to work around a mismatched key.
 
-The local build passed APK v1/v2/v3 signature verification, prior-certificate matching, alignment, package/version checks, runtime/helper tests, Windows PowerShell payload validation, bundled ADB execution and archive/hash verification. The separate Gradle fingerprint check could not start locally because Java could not establish a loopback connection. TV installation and D-pad navigation were verified for 1.3.0.8; Hush recovery/queue behavior and audio output still need device verification. Earlier 0.5 device observations are documented separately in [VERIFICATION.md](VERIFICATION.md).
+The local build passed APK v1/v2/v3 signature verification, prior-certificate matching, alignment, package/version checks, runtime/helper tests, Windows PowerShell payload validation, bundled ADB execution and archive/hash verification. The separate Gradle fingerprint check could not start locally because Java could not establish a loopback connection. TV installation and D-pad navigation were verified for 1.3.0.9; Hush recovery/queue behavior and audio output still need device verification. Earlier 0.5 device observations are documented separately in [VERIFICATION.md](VERIFICATION.md).
 
 The original four-APK source build is also supported by `build.ps1` with your own original inputs and key. `install.ps1` installs that set, grants the existing audio diagnostic permission, launches Spotify and starts the embedded helper. For a signed single APK use `adb install -r`, grant `android.permission.DUMP`, launch Spotify, then run `start-hush.ps1`.
 
@@ -130,10 +69,10 @@ The Windows release ZIP includes the signed APK and official ADB platform-tools.
 
 ## Open source and licenses
 
-The extension, patch/build tooling, tests and helper adaptations are open source. You can inspect the [source for this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.8), report issues, and contribute changes under the applicable licenses.
+The extension, patch/build tooling, tests and helper adaptations are open source. You can inspect the [source for this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.9), report issues, and contribute changes under the applicable licenses.
 
-- **Original TV UI, lyrics and audio implementation:** [MIT License](LICENSE).
-- **Embedded Hush helper and adaptations:** GPL-3.0, with the [upstream source pinned in this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.8/hush) and [full license notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.8/assets/HUSH-COPYING.txt).
+- **Original TV UI and audio implementation:** [MIT License](LICENSE).
+- **Embedded Hush helper and adaptations:** GPL-3.0, with the [upstream source pinned in this release](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.9/hush) and [full license notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.9/assets/HUSH-COPYING.txt).
 - **Kotlin ReVanced host module:** [GPL-3.0-only](revanced/COPYING).
 
 Spotify's original application binaries, branding, artwork, music and recordings remain proprietary or owned by their respective rightsholders. The open-source licenses above apply to the relevant project code; they do not make the entire bundled Spotify APK open source or grant rights to third-party content.
@@ -145,15 +84,15 @@ Credit belongs to the developers and communities behind each respective project.
 | Developer / project | Contribution or inspiration |
 | --- | --- |
 | [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA) | Maintains this Android TV project, TV integration, builds and installer. |
-| [Devon Shoutz / LeNerd46 — SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus) | Inspiration for themes, motion, sleep timer and custom lyrics. The upstream MIT notice is retained; mobile hooks, fonts and assets are not copied. |
-| [coldMEW — Hush](https://github.com/coldMEW/Hush) | Eight helper source files adapted from Hush 2.0.2, pinned at `4e9ded397338de5c69b1784c636feb3d34a8de01`, are embedded under GPL-3.0. |
-| [SideloadLabs — EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated) | Inspiration for optional lyrics-provider and presentation features. No Eevee code, binaries, assets or iOS hooks are incorporated. |
+| [Devon Shoutz / LeNerd46 â€” SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus) | Inspiration for themes, motion, sleep timer and custom lyrics. The upstream MIT notice is retained; mobile hooks, fonts and assets are not copied. |
+| [coldMEW â€” Hush](https://github.com/coldMEW/Hush) | Eight helper source files adapted from Hush 2.0.2, pinned at `4e9ded397338de5c69b1784c636feb3d34a8de01`, are embedded under GPL-3.0. |
+| [SideloadLabs â€” EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated) | Historical inspiration for the retired experimental lyrics feature and presentation controls. No Eevee code, binaries, assets or iOS hooks are incorporated. |
 | [Spicetify contributors](https://github.com/spicetify/cli) | Inspiration for CSS-based presentation customization. No Spicetify source, extensions or assets are bundled. |
 | [ReVanced developers](https://github.com/ReVanced/revanced-patcher) | Official patching framework used by the Kotlin build host, with pinned CLI tooling. |
-| [LRCLIB contributors](https://lrclib.net/docs) | Public API used by the independently implemented, optional manual lyrics lookup. Lyrics remain subject to rightsholders' rights and provider availability. |
+| [LRCLIB contributors](https://lrclib.net/docs) | Public API used by the retired experimental lyrics lookup in earlier releases. |
 | [Apktool / iBotPeaches contributors](https://github.com/iBotPeaches/Apktool) and [REAndroid / APKEditor contributors](https://github.com/REAndroid/APKEditor) | APK decoding/rebuilding and split-merging tools used in the release build. |
 | [Android Open Source Project](https://source.android.com/) | Android SDK signing/alignment tools and official ADB platform-tools; bundled tool notices are retained. |
 
-See the [inspiration notes](assets/INSPIRATION.md), [SpotifyPlus MIT notice](assets/SPOTIFYPLUS-LICENSE.txt) and [Hush source notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.8/assets/HUSH-NOTICE.txt) for attribution details.
+See the [inspiration notes](assets/INSPIRATION.md), [SpotifyPlus MIT notice](assets/SPOTIFYPLUS-LICENSE.txt) and [Hush source notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.9/assets/HUSH-NOTICE.txt) for attribution details.
 
-The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotify’s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. Optional manual LRCLIB lookup sends song title, artist, album and duration to that provider; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).
+The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotifyâ€™s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. The experimental lyrics integration has been removed; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).

@@ -27,7 +27,13 @@ $out = (Resolve-Path -LiteralPath $OutputDirectory).Path
 foreach ($name in @('classes','dex','framework','aligned','signed')) { New-Item -ItemType Directory -Path (Join-Path $out $name) | Out-Null }
 $env:JAVA_HOME = $jdk
 function Check-Exit([string]$Stage) { if ($LASTEXITCODE -ne 0) { throw "$Stage failed ($LASTEXITCODE)" } }
+git -C $PSScriptRoot submodule update --init --recursive
+Check-Exit 'Pinned Hush helper source'
+$generated = Join-Path $out 'hush-generated'
+python (Join-Path $PSScriptRoot 'hush/prepare.py') --output $generated
+Check-Exit 'Hush helper preparation'
 $sources = Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src/dev/aurora/tvpatch') -Filter '*.java' | ForEach-Object FullName
+$sources += Get-ChildItem -LiteralPath $generated -Recurse -Filter '*.java' | ForEach-Object FullName
 & (Join-Path $jdk 'bin/javac.exe') -encoding UTF-8 -source 8 -target 8 -cp $androidJar -d (Join-Path $out 'classes') @sources
 Check-Exit 'Java compilation'
 & (Join-Path $jdk 'bin/jar.exe') cf (Join-Path $out 'extension.jar') -C (Join-Path $out 'classes') .
@@ -40,7 +46,7 @@ Check-Exit 'Verified patcher download'
 if (-not $GradleExecutable) { $GradleExecutable = Join-Path $patchProject 'gradlew.bat' }
 & $GradleExecutable -p $patchProject testFingerprints bundle "-PextensionDex=$(Join-Path $out 'dex/classes.dex')"
 Check-Exit 'Kotlin patch compilation and fingerprint tests'
-$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-0.5.rvp'
+$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-1.3.0.9.rvp'
 $classpath = $bundle + [IO.Path]::PathSeparator + (Join-Path $patchProject '.tools/revanced-cli-6.0.0-all.jar')
 & (Join-Path $jdk 'bin/java.exe') -cp $classpath dev.aurora.patches.RunnerKt apply $bundle (Join-Path $original 'base.apk') (Join-Path $out 'patched-unsigned.apk') (Join-Path $out 'patch') (Join-Path $tools 'aapt2.exe')
 Check-Exit 'Modular patching and APK rebuild'

@@ -103,11 +103,11 @@ public final class AudioDsp {
     private static final class Settings {
         final boolean enabled;
         final int boost;
-        final int[] gains = new int[5];
+        final int[] gains;
         Settings(SharedPreferences prefs) {
             enabled = prefs.getBoolean("dspEnabled", false);
             boost = Math.max(0, Math.min(600, prefs.getInt("boostMb", 0)));
-            for (int i = 0; i < gains.length; i++) gains[i] = Math.max(-6, Math.min(6, prefs.getInt("eq" + i, 0)));
+            gains = GraphicEqSettings.read(prefs);
         }
     }
     private static final class Effects implements AudioEffectPlan.Target {
@@ -129,7 +129,7 @@ public final class AudioDsp {
         }
         void apply(int[] gains, int boost) {
             if (controlChanged.getAndSet(false)) plan.invalidate();
-            plan.apply(gains, boost, this);
+            plan.applyGraphic(gains, boost, this);
         }
         public void band(short band, short level) { eq.setBandLevel(band, level); }
         public void equalizerEnabled(boolean enabled) { eq.setEnabled(enabled); }

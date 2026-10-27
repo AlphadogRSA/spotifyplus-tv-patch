@@ -1,0 +1,9 @@
+Integrated Hush helper · Spotify+ TV 1.3.0.1
+
+Eight helper source files adapted from coldMEW/Hush 2.0.2, commit
+4e9ded397338de5c69b1784c636feb3d34a8de01, are embedded in Spotify's APK.
+The helper/adaptations are GPL-3.0; full license: HUSH-COPYING.txt.
+Source and reproducible adaptations: https://github.com/AlphadogRSA/spotifyplus-tv-patch
+Upstream: https://github.com/coldMEW/Hush
+The original UI/lyrics/EQ source retains its MIT license. No license here
+relicenses Spotify's proprietary binaries or artwork.

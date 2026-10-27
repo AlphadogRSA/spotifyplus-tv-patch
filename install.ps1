@@ -16,3 +16,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Installed, but audio-session discovery setup f
 & $Adb -s $Serial shell am force-stop com.spotify.tv.android
 & $Adb -s $Serial shell am start -W -n com.spotify.tv.android/.SpotifyTVActivity
 if ($LASTEXITCODE -ne 0) { throw 'Installed, but launch failed.' }
+
+# The helper is embedded in Spotify's APK and runs as the authorized ADB shell user.
+& (Join-Path $PSScriptRoot 'start-hush.ps1') -Serial $Serial -Adb $Adb

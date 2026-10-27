@@ -20,3 +20,5 @@ __pycache__/
 .jvm-temp/
 .gradle/
 !revanced/gradle/wrapper/gradle-wrapper.jar
+
+!hush/upstream/
