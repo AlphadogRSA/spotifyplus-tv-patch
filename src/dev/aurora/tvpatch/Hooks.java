@@ -265,6 +265,10 @@ public final class Hooks {
     public static boolean key(Activity a, KeyEvent event) {
         if (forwardingKey) return false;
         try {
+            // Spotify consumes TV keys in its native bridge, before DOM keydown.
+            // Leave native dialogs alone; route profile-page navigation to our focus controller.
+            if (a.hasWindowFocus() && NativeSettings.remote(web.get(), event.getKeyCode(),
+                    event.getAction() == KeyEvent.ACTION_DOWN)) return true;
             if (event.getKeyCode() == KeyEvent.KEYCODE_MENU || event.getKeyCode() == KeyEvent.KEYCODE_F1) {
                 if (event.getAction() == KeyEvent.ACTION_UP) showMenu(a);
                 return true;
@@ -385,7 +389,7 @@ public final class Hooks {
         values.put("hushStatus", HushIntegration.status());
         values.put("audioStatus", AudioDsp.status());
         values.put("sleep", sleepAt > 0 ? "Active · survives Spotify restarts" : "Off");
-        values.put("version", "1.3.0.1");
+        values.put("version", "1.3.0.3");
         return values;
     }
     public static void settingsAction(Activity a, String action) {

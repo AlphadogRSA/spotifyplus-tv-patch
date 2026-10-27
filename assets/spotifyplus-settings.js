@@ -53,7 +53,7 @@ function(config) {
       });
       host.appendChild(section);
     }
-    section.style.setProperty('--sptv-settings-accent',['#ffffff','#91e7cf','#bbb3ff','#ffffbf98'][Math.abs(Number(cfg.theme)||0)%4]);
+    section.style.setProperty('--sptv-settings-accent',['#ffffff','#91e7cf','#bbb3ff','#ffbf98'][Math.abs(Number(cfg.theme)||0)%4]);
     rows.forEach(function(row) {
       var button=section.querySelector('[data-sptv-action="'+row[0]+'"]'), value=label(row);
       var subtitle=button.querySelector('p'); if(subtitle.textContent!==value)subtitle.textContent=value;
@@ -65,30 +65,29 @@ function(config) {
     if(!scheduled){scheduled=true;Promise.resolve().then(sync);}
   }
   var observer=new MutationObserver(defer);observer.observe(document.documentElement,{childList:true,subtree:true});
+  function remote(key) {
+    if(!section || !host || !section.isConnected)return false;
+    var controls=Array.prototype.slice.call(host.querySelectorAll('button'));
+    var logout=document.querySelector('[data-testid="switch-user-button"]');
+    if(logout && controls.indexOf(logout)<0)controls.push(logout);
+    var current=document.activeElement;
+    if(controls.indexOf(current)<0)current=controls.filter(function(control){return /(?:^|\s)\S*--focused(?:\s|$)/.test(control.className);})[0];
+    var index=controls.indexOf(current), next=null;
+    if(key==='ArrowDown') {
+      next=current===logout ? section.querySelector('button') : controls[Math.min(controls.length-1,index+1)];
+    } else if(key==='ArrowUp') next=controls[Math.max(0,index-1)];
+    else if(key==='Enter' || key===' ') {
+      if(!current)return false;
+      current.click();return true;
+    } else return false;
+    if(!next)return false;
+    next.focus();next.scrollIntoView({block:'nearest'});return true;
+  }
   function key(event) {
-    if(!section)return;
-    var key=event.key, button=event.target.closest && event.target.closest('#sptv-native-settings button');
-    var controls=Array.prototype.slice.call(section.querySelectorAll('button'));
-    if(!button) {
-      if(key!=='ArrowDown')return;
-      var nativeRows=Array.prototype.slice.call(host.querySelectorAll('.profile-menu-item')).filter(function(row){return !section.contains(row);});
-      var last=nativeRows[nativeRows.length-1];
-      if(!last || !(last.contains(document.activeElement)||last.querySelector('[class*="--focused"]')))return;
-      previous=last.querySelector('button,[tabindex],[role="button"]')||document.activeElement;
-      controls[0].focus();
-    } else {
-      var index=controls.indexOf(button);
-      if(key==='ArrowDown')controls[Math.min(controls.length-1,index+1)].focus();
-      else if(key==='ArrowUp') {
-        if(index===0 && previous && previous.isConnected){previous.focus();previous.scrollIntoView({block:'nearest'});}
-        else controls[Math.max(0,index-1)].focus();
-      } else if(key==='Enter' || key===' ' || key==='ArrowRight' || key==='ArrowLeft')invoke(button.dataset.sptvAction);
-      else return;
-    }
-    event.preventDefault();event.stopImmediatePropagation();
+    if(remote(event.key)){event.preventDefault();event.stopImmediatePropagation();}
   }
   document.addEventListener('keydown',key,true);
-  var api={configure:function(next){cfg=next;sync();return !!section;},open:function(){
+  var api={remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
     var nativeButton=document.querySelector('[data-testid="top-menu--settings"]');
     if(nativeButton){nativeButton.click();return true;}
     return !!document.querySelector('[data-testid="profile-menu"],.profile__menu');

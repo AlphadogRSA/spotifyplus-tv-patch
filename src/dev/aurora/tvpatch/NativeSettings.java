@@ -55,6 +55,15 @@ public final class NativeSettings {
             view.evaluateJavascript("("+script+")("+json+")",null);
         }catch(Exception ignored){}
     }
+    public static boolean remote(WebView view, int code, boolean down) {
+        if(view==null || !trusted(view))return false;
+        String url=view.getUrl();
+        if(url==null || !url.matches(".*#/profile/?(?:[?].*)?$"))return false;
+        String key=code==19 ? "ArrowUp" : code==20 ? "ArrowDown" : (code==23 || code==66) ? "Enter" : null;
+        if(key==null)return false;
+        if(down)view.evaluateJavascript("window.__sptvSettings && window.__sptvSettings.remote(\""+key+"\")",null);
+        return true;
+    }
     public static void open(WebView view) {
         if(trusted(view))view.evaluateJavascript("window.__sptvSettings ? window.__sptvSettings.open() : false",null);
     }

@@ -1,6 +1,7 @@
 """Run the production bridge against a minimal Android lifecycle fake (no preinstalled JS bridge)."""
 from pathlib import Path
 import subprocess
+import os
 import tempfile
 import unittest
 
@@ -13,7 +14,7 @@ STUBS={
  'android/content/Context.java':'package android.content; public class Context {public android.content.res.AssetManager getAssets(){return new android.content.res.AssetManager();}}',
  'android/content/res/AssetManager.java':'package android.content.res; public class AssetManager { public java.io.InputStream open(String s){return new java.io.ByteArrayInputStream(new byte[0]);} }',
  'android/webkit/JavascriptInterface.java':'package android.webkit; public @interface JavascriptInterface {}',
- 'android/webkit/WebView.java':'package android.webkit; public class WebView {public String url;public Object bridge; public int registrations; public String getUrl(){return url;} public void addJavascriptInterface(Object b,String name){bridge=b;registrations++;} public android.content.Context getContext(){return new android.content.Context();} public void evaluateJavascript(String code,Object callback){} }',
+ 'android/webkit/WebView.java':'package android.webkit; public class WebView {public String url;public Object bridge; public int registrations; public String getUrl(){return url;} public void addJavascriptInterface(Object b,String name){bridge=b;registrations++;} public android.content.Context getContext(){return new android.content.Context();} public String lastScript; public void evaluateJavascript(String code,Object callback){lastScript=code;} }',
  'dev/aurora/tvpatch/Hooks.java':'package dev.aurora.tvpatch; public class Hooks {public static int calls;public static android.app.Activity activeActivity(){return new android.app.Activity();} public static void settingsAction(android.app.Activity a,String s){calls++;} public static org.json.JSONObject settingsSnapshot(android.content.Context c){return new org.json.JSONObject();}}',
  'BridgeLifecycle.java':'''import dev.aurora.tvpatch.NativeSettings;import dev.aurora.tvpatch.Hooks;import android.webkit.WebView;
 public class BridgeLifecycle {public static void main(String[] a)throws Exception {
@@ -25,6 +26,14 @@ public class BridgeLifecycle {public static void main(String[] a)throws Exceptio
  action.invoke(v.bridge,"theme");assert Hooks.calls==1 : "First trusted document can invoke settings without reload";
  NativeSettings.register(v);assert v.registrations==1 : "Repeated attachment must not replace bridge";
  v.url="https://example.com/";action.invoke(v.bridge,"theme");assert Hooks.calls==1 : "Untrusted navigation is rejected";
+ v.url="https://api-partner.spotify.com/tvapp?platform=androidtv#/profile";
+ assert NativeSettings.remote(v,20,true) : "Native D-pad must reach the settings focus controller";
+ assert v.lastScript.indexOf((char)92)<0 : "Generated JavaScript must not contain escaped argument quotes";
+ assert v.lastScript.contains("ArrowDown") : "Native Down maps to the browser action";
+ String prior=v.lastScript;assert NativeSettings.remote(v,20,false);assert v.lastScript==prior : "Key-up must not move focus twice";
+ assert !NativeSettings.remote(v,4,true) : "Back stays with Spotify";
+ v.url="https://api-partner.spotify.com/tvapp#/home";assert !NativeSettings.remote(v,20,true) : "Home navigation stays with Spotify";
+ v.url="https://example.com/#/profile";assert !NativeSettings.remote(v,20,true) : "Untrusted profile routes are rejected";
  System.out.println("Bridge lifecycle: first-load registration and invocation-time trust passed");
 }}''',
 }
@@ -36,5 +45,5 @@ class BridgeLifecycleTest(unittest.TestCase):
     path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(source);files.append(str(path))
    files.append(str(ROOT/'src/dev/aurora/tvpatch/NativeSettings.java'))
    subprocess.run(['java','-m','jdk.compiler/com.sun.tools.javac.Main','-cp',str(ROOT/'.tools/json.jar'),'-d',str(root/'classes'),*files],check=True)
-   subprocess.run(['java','-ea','-cp',str(root/'classes')+':'+str(ROOT/'.tools/json.jar'),'BridgeLifecycle'],check=True)
+   subprocess.run(['java','-ea','-cp',str(root/'classes')+os.pathsep+str(ROOT/'.tools/json.jar'),'BridgeLifecycle'],check=True)
 if __name__=='__main__':unittest.main()

@@ -1,3 +1,16 @@
+# 1.3.0.3 remote-navigation verification - 27 October 2026
+
+- Passed native bridge lifecycle/routing and browser settings regression tests, including virtual focus, key-up suppression and rejection outside trusted profile routes.
+- Passed 12 presentation checks, 16 theme regressions and 4 presentation-efficiency checks.
+- Compiled the updated runtime and pinned Hush helper; APK v1/v2/v3 signatures and prior certificate matched; alignment verified.
+- Installed on Xiaomi MiTV-AESP0 with adb install -r; Android reports versionName 1.3.0.3.
+- Real ADB D-pad events reached all 11 custom settings rows; selected controls remained within the viewport allowing subpixel rounding.
+- OK on Graphic equalizer opened the native EQ dialog; native Back dismissed it.
+- App data retained by same-key update; pre/post third-party package lists unchanged. Hush helper startup requested after update.
+- Audio output, ad recovery and queue behavior remain unverified for this build. Prior Gradle fingerprint invocation was blocked by a local Java loopback error.
+
+The historical evidence below describes older builds and retains their original limitations.
+
 # Version 1.3.0.1 — verified source and unsigned package (2026-10-27)
 
 - Final functional source: `c09378bfbf1bd12a3ff8d51453b4e489d256999e`. GitHub Actions run `40503784827` passed all three jobs: deterministic/helper/bridge/fingerprint checks, browser presentation/native-settings regressions, and Android compile/DEX/single-APK rebuild.
