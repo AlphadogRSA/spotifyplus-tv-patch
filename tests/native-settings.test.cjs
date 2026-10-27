@@ -11,7 +11,7 @@ const {chromium}=require('playwright');
  await page.evaluate(()=>{document.querySelector('main').innerHTML='<div class="profile__menu" data-testid="profile-menu"><div class="profile-menu-item"><button class="simple-menu-item--focused" id="native">About Spotify</button></div></div>'});
  await page.waitForSelector('#sptv-native-settings');
  assert.equal(await page.locator('#native').textContent(),'About Spotify','Existing native row retained');
- assert.equal(await page.locator('#sptv-native-settings button').count(),11);
+ assert.equal(await page.locator('#sptv-native-settings button').count(),10);
  // Android TV routes D-pad through its native bridge instead of DOM keydown.
  await page.evaluate(()=>{document.activeElement.blur();document.querySelector('#native').className='list-button list-button--focused'});
  assert.equal(await page.evaluate(()=>window.__sptvSettings.remote('ArrowDown')),true);

@@ -1,4 +1,4 @@
-SPOTIFY+ TV 1.3.0.8 - WINDOWS UPDATE INSTALLER - 27 OCTOBER 2026
+SPOTIFY+ TV 1.3.0.9 - WINDOWS UPDATE INSTALLER - 27 OCTOBER 2026
 
 Extract the entire ZIP, then double-click Install-Spotify.cmd.
 Keep the PC and TV on the same network and enable TV debugging.
@@ -15,7 +15,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-Spotify.ps1 -Valid
 
 Hush is opt-in. Run start-hush.ps1 again after a TV reboot.
 Target: the inspected Spotify TV 1.134.2 ARMv7 Android TV installation.
-Version name: 1.3.0.8; original Android versionCode retained for same-key updates.
+Version name: 1.3.0.9; original Android versionCode retained for same-key updates.
 TV playback, D-pad, EQ sound and helper behavior require real-device testing.
 Source: https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/feat/hush-tv
 Original runtime: MIT; embedded Hush and patcher: GPL-3.0; Spotify remains proprietary.

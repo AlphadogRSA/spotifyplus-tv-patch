@@ -2,26 +2,36 @@ function(config) {
   'use strict';
   var old = window.__sptvSettings;
   if (old) return old.configure(config);
+  var stats={syncs:0,focusReports:0};
+  var reportedMode=null,reportedProfile=null;
   var cfg = config, section = null, host = null, lastNav = null, watchedNav = null, scheduled = false;
   var rows = [
     ['theme','Appearance','theme'], ['blur','Artwork blur','blurArtwork'],
     ['motion','Cinematic motion','motion'], ['promotions','Hide promotions','hideUpgrade'],
     ['mute','Mute detected ads','muteAds'], ['hush','Hush ad-break skipping','hushEnabled'],
     ['hushSetup','Hush helper setup','hushStatus'], ['audio','Graphic equalizer','audioStatus'],
-    ['lyrics','Lyrics','Local files / LRCLIB'], ['sleep','Sleep timer','sleep'],
+    ['sleep','Sleep timer','sleep'],
     ['about','About Spotify+ TV','version']
   ];
   var style = document.createElement('style'); style.id = 'sptv-native-settings-style';
   style.textContent = '.sptv-settings-host{max-height:calc(100vh - 20rem);overflow-y:auto;overscroll-behavior:contain;padding-right:1rem;scrollbar-width:thin}' +
     '.menu--focused .sptv-nav-focus{outline:.4rem solid var(--sptv-accent,#1ed760);outline-offset:.5rem}' +
     '#sptv-native-settings{color:inherit;font:inherit;padding-bottom:3rem}' +
-    '#sptv-native-settings h2{font:inherit;font-size:2.8rem;font-weight:700;color:#659efa;margin:2rem 0 1.5rem}' +
-    '#sptv-native-settings .profile-menu-item{min-height:9rem;box-sizing:border-box;margin:.8rem 0;border:1px solid #2c3b4b;border-radius:1.5rem;background:#0c1117}' +
-    '#sptv-native-settings button{display:block;width:100%;background:transparent;color:inherit;border:0;text-align:left;font:inherit;font-size:2.75rem;font-weight:600;padding:1.5rem 2rem;border-radius:1.5rem}' +
-    '.sptv-settings-host.sptv-dom-navigation .list-button--focused:not(:focus),.sptv-settings-host.sptv-settings-suspended .list-button--focused{box-shadow:none!important}' +
-    '.sptv-settings-host button:focus{outline:.3rem solid #659efa;outline-offset:0;background:#1a2e46}' +
-    '#sptv-native-settings .profile-menu-item__subtitle{font-size:1.9rem;font-weight:400;color:#aebac4;opacity:1;margin:.65rem 0 0}';
+    '#sptv-native-settings h2{font:inherit;font-weight:700;margin:3rem 0 2rem}' +
+    '.sptv-settings-host.sptv-dom-navigation .list-button--focused:not(:focus),.sptv-settings-host.sptv-settings-suspended .list-button--focused{box-shadow:none!important}';
   (document.head || document.documentElement).appendChild(style);
+  function editing() {
+    var active=document.activeElement,nav=navElement();
+    if(nav && (nav.classList.contains('menu--focused') || nav.contains(active)))return false;
+    return !!(active && (active.matches('input,textarea,select') || active.isContentEditable)) || /^#\/search(?:[/?]|$)/.test(location.hash);
+  }
+  function reportFocus() {
+    var nav=navElement(), profile=profileVisible() && !!document.querySelector('[data-testid="profile-menu"],.profile__menu');
+    var mode=nav && (nav.classList.contains('menu--focused') || nav.contains(document.activeElement)) ? 'menu' : editing() ? 'text' : profile ? 'profile' : 'native';
+    if(mode===reportedMode && profile===reportedProfile)return;
+    reportedMode=mode;reportedProfile=profile;
+    if(window.SpotifyPlusSettings && typeof window.SpotifyPlusSettings.focus==='function'){stats.focusReports++;window.SpotifyPlusSettings.focus(mode,profile);}
+  }
   function invoke(action) {
     if (window.SpotifyPlusSettings && window.SpotifyPlusSettings.action) window.SpotifyPlusSettings.action(action);
   }
@@ -66,6 +76,7 @@ function(config) {
     var nav=navElement(), top=!!nav && nav.classList.contains('menu--focused');
     if(host)host.classList.toggle('sptv-settings-suspended',top);
     if(top){releaseSettingsFocus();repairNavFocus(nav);}else clearNavFocus();
+    reportFocus();
   }
   var navObserver=new MutationObserver(syncFocus);
   function watchNav() {
@@ -75,6 +86,7 @@ function(config) {
     syncFocus();
   }
   function focusChanged(event) {
+    reportFocus();
     var nav=navElement();
     if(nav && nav.contains(event.target))releaseSettingsFocus();
     else if(host && host.contains(event.target)) {
@@ -87,6 +99,7 @@ function(config) {
     if(section)section.remove();section=null;host=null;
   }
   function sync() {
+    stats.syncs++;reportFocus();
     scheduled = false;
     watchNav();disableUpgrade();
     var topNav=navElement();if(topNav && topNav.classList.contains('menu--focused'))repairNavFocus(topNav);
@@ -105,7 +118,8 @@ function(config) {
         var name=document.createElement('span');name.textContent=row[1];button.appendChild(name);
         var value=document.createElement('p');value.className='profile-menu-item__subtitle';button.appendChild(value);
         button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();invoke(row[0]);});
-        button.addEventListener('focus',function(){reveal(button);});
+        button.addEventListener('focus',function(){button.classList.add('list-button--focused');reveal(button);});
+        button.addEventListener('blur',function(){button.classList.remove('list-button--focused');});
         item.appendChild(button);section.appendChild(item);
       });
       host.appendChild(section);
@@ -119,8 +133,14 @@ function(config) {
     });
   }
   function defer(records) {
-    if(records.every(function(record){return record.target.nodeType===1 && record.target.closest('#sptv-native-settings');}))return;
-    if(!scheduled){scheduled=true;Promise.resolve().then(sync);}
+    var selector='[data-testid="profile-menu"],.profile__menu,[data-testid="top-menu"],[data-testid="upsell-menu-item"]';
+    var relevant=records.some(function(record){
+      if(record.target.nodeType===1 && record.target.closest('#sptv-native-settings'))return false;
+      if(host && (record.target===host || host.contains(record.target)))return true;
+      return Array.prototype.some.call(record.addedNodes,function(node){return node.nodeType===1 && (node.matches(selector)||!!node.querySelector(selector));}) ||
+        Array.prototype.some.call(record.removedNodes,function(node){return node.nodeType===1 && (node.matches(selector)||!!node.querySelector(selector));});
+    });
+    if(relevant && !scheduled){scheduled=true;Promise.resolve().then(sync);}
   }
   var observer=new MutationObserver(defer);observer.observe(document.documentElement,{childList:true,subtree:true});
   function remote(key) {
@@ -222,11 +242,13 @@ function(config) {
   var handledKeys=Object.create(null);
   function dispatch(key,down) {
     if(!down){var handled=handledKeys[key]===true;delete handledKeys[key];return handled;}
+    if(editing()) {handledKeys[key]=false;return false;}
     var handled=navigation(key,true) || (profileVisible() && remote(key));
     handledKeys[key]=!!handled;return !!handled;
   }
   document.addEventListener('click',blockUpgrade,true);
   document.addEventListener('focusin',focusChanged,true);
+  document.addEventListener('focusout',reportFocus,true);
   window.addEventListener('hashchange',routeChanged);upgradeRoute();
   function key(event) {
     if(dispatch(event.key,true)){event.preventDefault();event.stopImmediatePropagation();}
@@ -235,10 +257,10 @@ function(config) {
   document.addEventListener('keydown',key,true);
   document.addEventListener('keyup',keyUp,true);
   window.addEventListener('resize',fitHost);
-  var api={dispatch:dispatch,navigation:navigation,remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
+  var api={stats:stats,dispatch:dispatch,navigation:navigation,remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
     var nativeButton=document.querySelector('[data-testid="top-menu--settings"]');
     if(nativeButton){nativeButton.click();return true;}
     return !!document.querySelector('[data-testid="profile-menu"],.profile__menu');
-  },dispose:function(){navObserver.disconnect();document.removeEventListener('focusin',focusChanged,true);document.removeEventListener('click',blockUpgrade,true);window.removeEventListener('hashchange',routeChanged);window.removeEventListener('resize',fitHost);observer.disconnect();document.removeEventListener('keydown',key,true);document.removeEventListener('keyup',keyUp,true);clearNavFocus();cleanHost();style.remove();}};
+  },dispose:function(){navObserver.disconnect();document.removeEventListener('focusin',focusChanged,true);document.removeEventListener('focusout',reportFocus,true);document.removeEventListener('click',blockUpgrade,true);window.removeEventListener('hashchange',routeChanged);window.removeEventListener('resize',fitHost);observer.disconnect();document.removeEventListener('keydown',key,true);document.removeEventListener('keyup',keyUp,true);clearNavFocus();cleanHost();style.remove();}};
   window.__sptvSettings=api;sync();return !!section;
 }

@@ -1,7 +1,7 @@
 function(config) {
   'use strict';
   // Original TV presentation code. Existing artwork only; no media/account requests.
-  var VERSION = 9, ID = 'spotifyplus-tv-style';
+  var VERSION = 10, ID = 'spotifyplus-tv-style';
   var previous = window.__spotifyPlusTV;
   if (previous && previous.version === VERSION) return previous.configure(config);
   if (previous) {
@@ -64,7 +64,6 @@ function(config) {
         + '.context-menu{background-color:' + ['','#152927','#211f33','#30231e','#122738','#321a2a','#302719'][c.theme] + '!important}'
         + 'button:focus-visible,a:focus-visible,[role="button"]:focus-visible{outline-color:' + accent + '!important}';
     }
-    if (c.largeLyrics) sheet += '[data-testid*="lyrics"] p,[data-testid*="lyrics"] [role="text"]{font-size:32px!important;line-height:1.55!important}';
     return sheet;
   }
   function directPromo(node) {
@@ -237,7 +236,7 @@ function(config) {
     state.hidden.forEach(function(el) { el.classList.remove('sptv-upgrade-hidden'); }); clearArt();
   };
   state.configure = function(c) {
-    var next = { theme: Math.abs(Number(c.theme) || 0) % 7, blurArtwork: !!c.blurArtwork, hideUpgrade: !!c.hideUpgrade, motion: !!c.motion, largeLyrics: !!c.largeLyrics };
+    var next = { theme: Math.abs(Number(c.theme) || 0) % 7, blurArtwork: !!c.blurArtwork, hideUpgrade: !!c.hideUpgrade, motion: !!c.motion };
     var signature = JSON.stringify(next), nextArt = next.blurArtwork + ':' + next.hideUpgrade;
     if (key === signature) return summary();
     var first = !cfg, scan = first || nextArt !== artKey; cfg = next; key = signature; artKey = nextArt;

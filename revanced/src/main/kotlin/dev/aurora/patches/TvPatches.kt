@@ -17,7 +17,7 @@ import org.w3c.dom.Element
 private const val PACKAGE = "com.spotify.tv.android"
 private const val VERSION = "1.134.2"
 
-val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import", use = false) {
+val tvManifestPatch = resourcePatch(name = "TV app label and helper diagnostics", use = false) {
     compatibleWith(PACKAGE(VERSION))
     apply {
         document("AndroidManifest.xml").use { doc ->
@@ -148,7 +148,7 @@ val tvWebViewPatch = bytecodePatch(name = "TV WebView theme hook", use = false) 
     }
 }
 
-val tvSessionPatch = bytecodePatch(name = "TV own-session lyrics and timer", use = false) {
+val tvSessionPatch = bytecodePatch(name = "TV own-session audio and timer", use = false) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(runtimePatch)
     apply {
@@ -181,8 +181,8 @@ val tvAdMutePatch = bytecodePatch(name = "TV detected-ad muting", use = false) {
 }
 
 val spotifyPlusTvPatch = bytecodePatch(
-    name = "SpotifyPlus TV interface and lyrics",
-    description = "TV remote menu, themes, local/LRCLIB lyrics and own-session sleep timer. No account entitlement changes.",
+    name = "SpotifyPlus TV interface",
+    description = "TV remote menu, themes, graphic EQ and own-session sleep timer. No account entitlement changes.",
 ) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(tvRemotePatch, tvWebViewPatch, tvSessionPatch, tvAdMutePatch)

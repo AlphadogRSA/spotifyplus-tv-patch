@@ -7,7 +7,6 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.media.MediaMetadata;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
@@ -27,18 +26,12 @@ import android.widget.Toast;
 import android.util.Log;
 import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** Version-specific, local UI extension. Spotify remains the player and login provider. */
 public final class Hooks {
@@ -48,30 +41,16 @@ public final class Hooks {
     private static MediaSession.Token token;
     private static MediaController controller;
     private static volatile PlaybackState cachedPlayback;
-    private static volatile MediaMetadata cachedMetadata;
     private static MediaController.Callback controllerCallback;
     private static final List<AlertDialog> dialogs = new ArrayList<>();
     private static final Map<AlertDialog, Runnable> dialogUpdates = new LinkedHashMap<>();
-    private static final Pattern TRACK_ID = Pattern.compile("([A-Za-z0-9]{22})(?:$|[?/#])");
-    private static AlertDialog menu, lyricDialog;
-    private static TextView lyricTitle, lyricStatus;
-    private static final TextView[] lyricRows = new TextView[3];
-    private static String loadedFile = "";
-    private static long loadedModified;
-    private static List<Lyrics.Line> lines = new ArrayList<>();
-    private static final Map<String, Provider.Result> fetched = new LinkedHashMap<>();
-    private static final ExecutorService NETWORK = Executors.newSingleThreadExecutor();
-    private static boolean fetching;
-    private static String loadedKey = "", lookupKey = "", lookupMessage = "", plainLyrics = "", lyricSource = "Local LRC";
-    private static long nextLookupAt;
-    private static Button fetchButton, plainButton;
     private static long sleepAt;
     private static boolean detectedAd;
     private static String script;
     private static boolean longSelect;
     private static boolean forwardingKey;
     private static boolean replayingNavigation;
-    private static final String VERSION = "1.3.0.8";
+    private static final String VERSION = "1.3.0.9";
     private static KeyEvent selectDown;
     private static final AdMuteState AD_MUTE = new AdMuteState();
     private static volatile WeakReference<Object> volumeBridge = new WeakReference<>(null);
@@ -91,7 +70,6 @@ public final class Hooks {
                     }
                     toast("Sleep timer finished");
                 }
-                if (lyricDialog != null && lyricDialog.isShowing()) updateLyrics();
                 applyAdVolume();
                 Activity current = activity.get();
                 if (current != null) {
@@ -101,7 +79,7 @@ public final class Hooks {
                     AudioDsp.tick(current, playback != null && playback.getState() == PlaybackState.STATE_PLAYING);
                 }
             } catch (Exception ignored) { }
-            UI.postDelayed(this, lyricDialog != null && lyricDialog.isShowing() ? 250 : 1000);
+            UI.postDelayed(this, 1000);
         }
     };
     private static boolean started;
@@ -151,8 +129,6 @@ public final class Hooks {
         if (activity.get() != a) return;
         AudioDsp.stop();
         for (AlertDialog dialog : new ArrayList<>(dialogs)) dialog.dismiss();
-        clearLyricViews();
-        menu = null; lyricDialog = null;
         selectDown = null; longSelect = false;
         activity.clear(); web.clear();
     }
@@ -174,21 +150,16 @@ public final class Hooks {
         controller = next;
         controllerCallback = new MediaController.Callback() {
             @Override public void onPlaybackStateChanged(PlaybackState state) { if (controller == next) cachedPlayback = state; }
-            @Override public void onMetadataChanged(MediaMetadata metadata) { if (controller == next) cachedMetadata = metadata; }
             @Override public void onSessionDestroyed() {
                 if (controller != next) return;
                 next.unregisterCallback(this);
-                controller = null; controllerCallback = null; cachedPlayback = null; cachedMetadata = null;
+                controller = null; controllerCallback = null; cachedPlayback = null;
                 AudioDsp.stop();
             }
         };
         next.registerCallback(controllerCallback, UI);
-        cachedPlayback = next.getPlaybackState(); cachedMetadata = next.getMetadata();
+        cachedPlayback = next.getPlaybackState();
         HushIntegration.recover(context, next);
-    }
-    private static void clearLyricViews() {
-        lyricTitle = null; lyricStatus = null; fetchButton = null; plainButton = null;
-        for (int i = 0; i < lyricRows.length; i++) lyricRows[i] = null;
     }
     private static void setTextChanged(TextView view, CharSequence text) {
         if (view != null && !android.text.TextUtils.equals(view.getText(), text)) view.setText(text);
@@ -199,8 +170,6 @@ public final class Hooks {
             dialogs.remove(dialog);
             Runnable update = dialogUpdates.remove(dialog);
             if (update != null) UI.removeCallbacks(update);
-            if (menu == dialog) menu = null;
-            if (lyricDialog == dialog) { lyricDialog = null; clearLyricViews(); }
         });
         return dialog;
     }
@@ -266,6 +235,7 @@ public final class Hooks {
     }
     public static boolean key(Activity a, KeyEvent event) {
         if (forwardingKey) return false;
+        if (a.hasWindowFocus() && NativeSettings.bypassTextKey(web.get(),event.getKeyCode(),event.getAction()==KeyEvent.ACTION_DOWN)) {selectDown=null;longSelect=false;return false;}
         try {
             // Spotify consumes TV keys in its native bridge, before DOM keydown.
             // Leave native dialogs alone; route profile-page navigation to our focus controller.
@@ -333,7 +303,6 @@ public final class Hooks {
             config.put("motion", p.getBoolean("motion", true));
             config.put("blurArtwork", p.getBoolean("blurArtwork", true));
             config.put("hideUpgrade", p.getBoolean("hideUpgrade", true));
-            config.put("largeLyrics", p.getBoolean("largeLyrics", true));
             view.evaluateJavascript("(" + script + ")(" + config.toString() + ")", result -> Log.i("SPTV", "Theme result: " + result));
         } catch (Exception failure) { Log.w("SPTV", "Theme failed: " + failure.getClass().getSimpleName()); }
     }
@@ -389,7 +358,6 @@ public final class Hooks {
         } else if (action.equals("hush")) p.edit().putBoolean("hushEnabled", !p.getBoolean("hushEnabled", false)).apply();
         else if (action.equals("hushSetup")) HushIntegration.showSetup(a);
         else if (action.equals("audio")) showAudio(a);
-        else if (action.equals("lyrics")) showLyrics(a);
         else if (action.equals("sleep")) showSleep(a);
         else if (action.equals("about")) showAbout(a);
         else return;
@@ -464,151 +432,5 @@ public final class Hooks {
             if (dialog.isShowing()) { setTextChanged(status, AudioDsp.status()); UI.postDelayed(this, 1000); }
         }};
         dialogUpdates.put(dialog, updater); UI.post(updater);
-    }
-    private static String lyricName(MediaMetadata metadata) {
-        String id = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
-        Matcher match = TRACK_ID.matcher(id == null ? "" : id);
-        if (match.find()) return match.group(1) + ".lrc";
-        String title = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        String artist = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        return "track-" + Integer.toHexString((title + "\n" + artist).hashCode()) + ".lrc";
-    }
-    private static void showLyrics(Activity a) {
-        LinearLayout body = panel(a);
-        LinearLayout toolbar=new LinearLayout(a);toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);toolbar.setBackgroundColor(Color.TRANSPARENT);
-        toolbar.addView(text(a,"Lyrics",22,Color.WHITE),new LinearLayout.LayoutParams(0,-2,1));toolbar.addView(button(a,"Close",()->{if(lyricDialog!=null)lyricDialog.dismiss();}));add(body,toolbar);
-        lyricTitle = text(a, "Lyrics", 20, PanelUi.BLUE); lyricTitle.setMaxLines(1); add(body, lyricTitle);
-        for (int i = 0; i < 3; i++) { lyricRows[i] = text(a, "", i == 1 ? 30 : 20, i == 1 ? Color.WHITE : 0xff8999a8); lyricRows[i].setMinLines(1); add(body, lyricRows[i]); }
-        lyricStatus = text(a, "", 12, 0xffb9c7d0); lyricStatus.setMaxLines(2); add(body, lyricStatus);
-        LinearLayout controls = new LinearLayout(a);
-        controls.setBackgroundColor(Color.TRANSPARENT);
-        Button play = button(a, "Play / pause", () -> {
-            if (controller == null) return;
-            PlaybackState state = cachedPlayback;
-            if (state != null && state.getState() == PlaybackState.STATE_PLAYING) controller.getTransportControls().pause();
-            else controller.getTransportControls().play();
-        });
-        controls.addView(play);
-        fetchButton = button(a, "Fetch from LRCLIB", () -> requestLyrics(a));
-        controls.addView(fetchButton);
-        plainButton = button(a, "Plain lyrics", () -> showPlainLyrics(a));
-        controls.addView(plainButton);
-        add(body, controls);
-        SharedPreferences p = prefs(a);
-        LinearLayout options = new LinearLayout(a); options.setBackgroundColor(Color.TRANSPARENT);
-        Button size = button(a, "Size: " + p.getInt("lyricSize", 30), () -> { });
-        size.setOnClickListener(v -> {
-            int current = p.getInt("lyricSize", 30);
-            int next = current == 24 ? 30 : current == 30 ? 36 : 24;
-            p.edit().putInt("lyricSize", next).apply(); size.setText("Size: " + next);
-        }); options.addView(size);
-        Button offset = button(a, "Timing: " + p.getInt("lyricOffset", 0) + " ms", () -> { });
-        offset.setOnClickListener(v -> {
-            int current = p.getInt("lyricOffset", 0);
-            int next = current == 0 ? 500 : current == 500 ? 1000 : current == 1000 ? -1000 : current == -1000 ? -500 : 0;
-            p.edit().putInt("lyricOffset", next).apply(); offset.setText("Timing: " + next + " ms");
-        }); options.addView(offset);
-        add(body, options);
-        add(body, text(a, "Fetch shares song metadata with lrclib.net. Valid local LRC files take priority. Positive timing advances lyrics.", 11, 0xffb9c7d0));
-        lyricDialog = show(a, body); play.requestFocus(); updateLyrics();
-    }
-    private static String trackKey(MediaMetadata metadata) {
-        if (metadata == null) return "";
-        return lyricName(metadata) + "|" + metadata.getString(MediaMetadata.METADATA_KEY_TITLE) + "|"
-            + metadata.getString(MediaMetadata.METADATA_KEY_ARTIST) + "|" + metadata.getString(MediaMetadata.METADATA_KEY_ALBUM)
-            + "|" + metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
-    }
-    private static void requestLyrics(Activity a) {
-        if (fetching || SystemClock.elapsedRealtime() < nextLookupAt || controller == null) return;
-        MediaMetadata metadata = cachedMetadata;
-        if (metadata == null) { toast("Start a track in Spotify first."); return; }
-        String title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        String artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        String album = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM);
-        long duration = metadata.getLong(MediaMetadata.METADATA_KEY_DURATION);
-        final String key = trackKey(metadata);
-        fetching = true; lookupKey = key; lookupMessage = "Fetching from LRCLIB…";
-        nextLookupAt = SystemClock.elapsedRealtime() + 30000;
-        NETWORK.execute(() -> {
-            Provider.Result response = null; String error = null;
-            try { response = Provider.fetch(title, artist, album, duration); }
-            catch (Exception failure) {
-                error = failure instanceof IllegalStateException || failure instanceof IllegalArgumentException
-                    ? failure.getMessage() : "LRCLIB unavailable. Check the network and retry.";
-            }
-            final Provider.Result result = response; final String message = error;
-            UI.post(() -> {
-                fetching = false;
-                if (result != null) {
-                    fetched.put(key, result);
-                    if (fetched.size() > 12) fetched.remove(fetched.keySet().iterator().next());
-                    lookupMessage = result.instrumental ? "LRCLIB identifies this track as instrumental."
-                        : result.synced.isEmpty() && result.plain.isEmpty() ? "LRCLIB returned no lyrics for this track."
-                        : "Lyrics supplied by LRCLIB.";
-                } else lookupMessage = message;
-                loadedKey = "";
-                if (lyricDialog != null && lyricDialog.isShowing()) updateLyrics();
-            });
-        });
-    }
-    private static void showPlainLyrics(Activity a) {
-        if (plainLyrics.isEmpty()) return;
-        ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(PanelUi.BACKGROUND);
-        TextView content = text(a, plainLyrics + "\n\nLyrics from LRCLIB · Back to close", 24, Color.WHITE);
-        scroll.addView(content); scroll.setFocusableInTouchMode(true);
-        scroll.setOnKeyListener((v, key, event) -> {
-            if (key != KeyEvent.KEYCODE_DPAD_UP && key != KeyEvent.KEYCODE_DPAD_DOWN) return false;
-            if (key == KeyEvent.KEYCODE_DPAD_UP && scroll.getScrollY()==0) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN)
-                scroll.smoothScrollBy(0, (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1) * Math.max(80, scroll.getHeight() / 3));
-            return true;
-        });
-        AlertDialog dialog = trackDialog(PanelUi.dialog(a,"Plain lyrics",scroll,true));
-        dialog.getWindow().setLayout((int)(a.getResources().getDisplayMetrics().widthPixels * .82), (int)(a.getResources().getDisplayMetrics().heightPixels * .8));
-        scroll.requestFocus();
-    }
-    private static void updateLyrics() {
-        Activity a = activity.get(); if (a == null || lyricTitle == null) return;
-        MediaMetadata metadata = cachedMetadata;
-        PlaybackState state = cachedPlayback;
-        String title = metadata == null ? "Start a track in Spotify" : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        setTextChanged(lyricTitle, title == null ? "Local lyrics" : title);
-        String name = lyricName(metadata);
-        String key = trackKey(metadata);
-        File file = new File(new File(a.getFilesDir(), "sptv-lyrics"), name);
-        if (!key.equals(loadedKey) || !name.equals(loadedFile) || file.lastModified() != loadedModified) {
-            loadedKey = key; plainLyrics = ""; lyricSource = "Local LRC";
-            loadedFile = name; loadedModified = file.lastModified(); lines = new ArrayList<>();
-            if (file.isFile() && file.length() < 524288) try { lines = Lyrics.parse(read(new FileInputStream(file))); } catch (Exception ignored) { }
-            Provider.Result remote = fetched.get(key);
-            if (lines.isEmpty() && remote != null) {
-                lines = Lyrics.parse(remote.synced); plainLyrics = remote.plain; lyricSource = "LRCLIB";
-            }
-        }
-        long position = state == null ? 0 : Lyrics.position(state.getPosition(), state.getLastPositionUpdateTime(),
-            SystemClock.elapsedRealtime(), state.getState() == PlaybackState.STATE_PLAYING, state.getPlaybackSpeed(),
-            metadata == null ? 0 : metadata.getLong(MediaMetadata.METADATA_KEY_DURATION));
-        SharedPreferences settings = prefs(a);
-        int current = Lyrics.active(lines, Math.max(0, position + settings.getInt("lyricOffset", 0)));
-        String[] plain = plainLyrics.isEmpty() ? new String[0] : plainLyrics.split("\\r?\\n");
-        for (int i = 0; i < 3; i++) {
-            lyricRows[i].setVisibility(lines.isEmpty() && plain.length==0 ? View.GONE : View.VISIBLE);
-            int index = current + i - 1;
-            int size = i == 1 ? settings.getInt("lyricSize", 30) : Math.max(16, settings.getInt("lyricSize", 30) - 10);
-            float pixels = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, size, a.getResources().getDisplayMetrics());
-            if (Math.abs(lyricRows[i].getTextSize() - pixels) > .1f) lyricRows[i].setTextSize(size);
-            setTextChanged(lyricRows[i], lines.isEmpty() ? (i < plain.length ? plain[i] : "") : index >= 0 && index < lines.size() ? lines.get(index).text : "");
-        }
-        String trackTitle = metadata == null ? null : metadata.getString(MediaMetadata.METADATA_KEY_TITLE);
-        String trackArtist = metadata == null ? null : metadata.getString(MediaMetadata.METADATA_KEY_ARTIST);
-        boolean hasTrack = trackTitle != null && !trackTitle.trim().isEmpty() && trackArtist != null && !trackArtist.trim().isEmpty();
-        fetchButton.setEnabled(hasTrack && !fetching && SystemClock.elapsedRealtime() >= nextLookupAt);
-        setTextChanged(fetchButton, fetching ? "Fetching…" : "Fetch from LRCLIB");
-        plainButton.setEnabled(!plainLyrics.isEmpty());
-        String status = lines.isEmpty() ? plainLyrics.isEmpty() ? "No lyrics loaded. Import " + name + " or fetch from LRCLIB."
-            : "LRCLIB plain lyrics · choose Plain lyrics to scroll" : lyricSource + " · " + (position / 60000) + ":" + String.format("%02d", (position / 1000) % 60);
-        if (key.equals(lookupKey) && lookupMessage != null && !lookupMessage.isEmpty()) status = lookupMessage + " " + status;
-        setTextChanged(lyricStatus, controller == null ? "Waiting for this app's media session. No other app is controlled."
-            : status);
     }
 }

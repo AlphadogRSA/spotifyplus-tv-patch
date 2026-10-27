@@ -1,7 +1,7 @@
 plugins { kotlin("jvm") version "2.3.10" }
 
 group = "dev.aurora.tvpatch"
-version = "1.3.0.1"
+version = "1.3.0.9"
 kotlin {
     jvmToolchain(17)
     // The pinned official Patcher is built with experimental context/backing-field metadata.
@@ -28,7 +28,7 @@ tasks.processResources {
 }
 val bundle by tasks.registering(Jar::class) {
     dependsOn(tasks.classes)
-    archiveFileName.set("spotifyplus-tv-1.3.0.1.rvp")
+    archiveFileName.set("spotifyplus-tv-1.3.0.9.rvp")
     from(sourceSets.main.get().output)
     doFirst { require(extensionDex.isPresent && file(extensionDex.get()).isFile) { "Pass -PextensionDex=/absolute/path/to/classes.dex from the compiled MIT runtime extension" } }
     manifest { attributes("Main-Class" to "dev.aurora.patches.RunnerKt") }

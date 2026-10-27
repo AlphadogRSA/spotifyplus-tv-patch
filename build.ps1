@@ -46,7 +46,7 @@ Check-Exit 'Verified patcher download'
 if (-not $GradleExecutable) { $GradleExecutable = Join-Path $patchProject 'gradlew.bat' }
 & $GradleExecutable -p $patchProject testFingerprints bundle "-PextensionDex=$(Join-Path $out 'dex/classes.dex')"
 Check-Exit 'Kotlin patch compilation and fingerprint tests'
-$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-1.3.0.1.rvp'
+$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-1.3.0.9.rvp'
 $classpath = $bundle + [IO.Path]::PathSeparator + (Join-Path $patchProject '.tools/revanced-cli-6.0.0-all.jar')
 & (Join-Path $jdk 'bin/java.exe') -cp $classpath dev.aurora.patches.RunnerKt apply $bundle (Join-Path $original 'base.apk') (Join-Path $out 'patched-unsigned.apk') (Join-Path $out 'patch') (Join-Path $tools 'aapt2.exe')
 Check-Exit 'Modular patching and APK rebuild'

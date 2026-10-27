@@ -16,6 +16,9 @@ public final class NativeSettings {
     private static String script;
     private static WeakReference<WebView> attached=new WeakReference<>(null);
     private static String signature="";
+    private static String focusMode="native";
+    private static boolean menuVisible;
+    private static final java.util.Set<Integer> routedKeys=new java.util.HashSet<>();
     private NativeSettings() {}
     static boolean trusted(WebView view) {
         String url=view.getUrl();
@@ -28,8 +31,16 @@ public final class NativeSettings {
     public static void register(WebView view) {
         // Register before loadUrl. A new WebView legitimately has no trusted URL yet.
         if(attached.get()==view)return;
-        attached=new WeakReference<>(view);signature="";
+        attached=new WeakReference<>(view);signature="";focusMode="native";menuVisible=false;routedKeys.clear();
         view.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void focus(String mode,boolean profile) {
+                if(!"native".equals(mode) && !"menu".equals(mode) && !"profile".equals(mode) && !"text".equals(mode))return;
+                UI.post(() -> {
+                    if(attached.get()!=view || !trusted(view))return;
+                    boolean entered=profile && !menuVisible;focusMode=mode;menuVisible=profile;
+                    if(entered)refresh(view,true);
+                });
+            }
             @JavascriptInterface public void action(String action) {
                 if(action==null || action.length()>24)return;
                 UI.post(() -> {
@@ -44,7 +55,7 @@ public final class NativeSettings {
         refresh(view,true);
     }
     public static void refresh(WebView view,boolean force) {
-        if(!trusted(view))return;
+        if(!trusted(view) || (!force && !menuVisible))return;
         try {
             JSONObject values=Hooks.settingsSnapshot(view.getContext());String json=values.toString();
             if(!force && json.equals(signature))return;signature=json;
@@ -55,10 +66,18 @@ public final class NativeSettings {
             view.evaluateJavascript("("+script+")("+json+")",null);
         }catch(Exception ignored){}
     }
+    public static boolean textEntry(WebView view) {return view!=null && attached.get()==view && "text".equals(focusMode) && trusted(view);}
+    public static boolean bypassTextKey(WebView view,int code,boolean down) {
+        if(!textEntry(view))return false;
+        if(down){routedKeys.remove(code);return true;}
+        return !routedKeys.contains(code);
+    }
     public static boolean navigation(WebView view,int code,boolean down,Runnable fallback) {
-        if(view==null || !trusted(view))return false;
+        boolean pairedRelease=!down && routedKeys.remove(code);
+        if(view==null || !trusted(view) || (!pairedRelease && ("text".equals(focusMode) || ("native".equals(focusMode) && !menuVisible))))return false;
         String key=code==19 ? "ArrowUp" : code==20 ? "ArrowDown" : code==21 ? "ArrowLeft" : code==22 ? "ArrowRight" : (code==23 || code==66) ? "Enter" : null;
         if(key==null)return false;
+        if(down)routedKeys.add(code);
         view.evaluateJavascript("!!(window.__sptvSettings && window.__sptvSettings.dispatch(\""+key+"\","+down+"))",result -> {
             if(!"true".equals(result) && attached.get()==view && trusted(view))fallback.run();
         });
