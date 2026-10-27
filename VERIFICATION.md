@@ -1,3 +1,15 @@
+# Version 1.3.0.1 — verified source and unsigned package (2026-10-27)
+
+- Final functional source: `c09378bfbf1bd12a3ff8d51453b4e489d256999e`. GitHub Actions run `40503784827` passed all three jobs: deterministic/helper/bridge/fingerprint checks, browser presentation/native-settings regressions, and Android compile/DEX/single-APK rebuild.
+- Local Java checks passed: lyrics 13, provider 10, ad-mute state 13, audio-session isolation 7, existing EQ/cache 10, plus graphic curve interpolation/migration/clamping/cache, sleep deadline and Hush policy cases. The first-document WebView lifecycle test passes without supplying a JavaScript bridge in advance; it checks null-URL registration, trusted first-page invocation and rejection after untrusted navigation.
+- Browser checks passed: 12 presentation, 16 theme/promotion, 4 performance checks, plus native settings route scoping, original-row preservation, D-pad entry/return, actions, state refresh and cleanup.
+- Review fixes: the bridge is now injected immediately before both observed native WebView `loadUrl` calls; recovery no longer has a process-local restart latch that can remain stuck if the helper fails to terminate its caller. The pending sleep deadline remains independent of visible timer cleanup.
+- The local rebuilt single APK reports package `com.spotify.tv.android`, versionName `1.3.0.1`, versionCode `2340200`; ARMv7 player libraries are merged. Earlier extension definitions are removed, the new runtime classes occur once, and the guarded embedded helper provider/full GPL notices are present. There is no companion app.
+- Final local APK SHA-256: `202c36000fb1579e3020ffb82ff86155bc8fe0cab508da5b07c0088fdb66c1f5`. Android apksig verification confirms **unsigned, zero signer certificates**. It must be signed using the retained TV key before same-key installation; no new signing key was substituted.
+- Not verified: installation/update on the TV, live D-pad behavior in Spotify’s complete SPA, actual frequency/loudness response, real ad-break dropping, queue context, process-restart playback, background/screen behavior and helper setup after reboot. No live-TV success claim is made for this version.
+
+## Historical 0.5 and earlier observations
+
 # Verification — 26 October 2026
 
 ## Release 0.5
