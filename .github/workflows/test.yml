@@ -37,6 +37,8 @@ jobs:
           java -ea -cp test-classes HushPolicyTest
       - name: Test modular fingerprints
         run: bash revanced/gradlew -p revanced testFingerprints
+      - name: Verify WebView bridge lifecycle
+        run: python3 -m unittest discover -s tests -p test_settings_bridge.py -v
       - name: Check source tools
         run: |
           python3 -m py_compile patch.py import_lyrics.py

@@ -1,6 +1,8 @@
 package dev.aurora.tvpatch;
 
 import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import org.json.JSONObject;
@@ -10,6 +12,7 @@ import java.lang.ref.WeakReference;
 
 /** Fixed settings actions only; the bridge never accepts code, shell commands or URLs. */
 public final class NativeSettings {
+    private static final Handler UI=new Handler(Looper.getMainLooper());
     private static String script;
     private static WeakReference<WebView> attached=new WeakReference<>(null);
     private static String signature="";
@@ -22,21 +25,22 @@ public final class NativeSettings {
         String host=android.net.Uri.parse(url).getHost();
         return host!=null && (host.equals("spotify.com")||host.endsWith(".spotify.com")||host.equals("tv.scdn.co"));
     }
+    public static void register(WebView view) {
+        // Register before loadUrl. A new WebView legitimately has no trusted URL yet.
+        if(attached.get()==view)return;
+        attached=new WeakReference<>(view);signature="";
+        view.addJavascriptInterface(new Object() {
+            @JavascriptInterface public void action(String action) {
+                if(action==null || action.length()>24)return;
+                UI.post(() -> {
+                    Activity a=Hooks.activeActivity();
+                    if(a!=null && !a.isFinishing() && attached.get()==view && trusted(view))Hooks.settingsAction(a,action);
+                });
+            }
+        },"SpotifyPlusSettings");
+    }
     public static void attach(WebView view,Activity activity) {
-        if(!trusted(view))return;
-        if(attached.get()!=view) {
-            attached=new WeakReference<>(view);signature="";
-            WeakReference<Activity> owner=new WeakReference<>(activity);
-            view.addJavascriptInterface(new Object() {
-                @JavascriptInterface public void action(String action) {
-                    if(action==null || action.length()>24)return;
-                    Activity a=owner.get();if(a==null)return;
-                    a.runOnUiThread(() -> { if(!a.isFinishing() && trusted(view))Hooks.settingsAction(a,action); });
-                }
-            },"SpotifyPlusSettings");
-        }
-        // addJavascriptInterface becomes visible on the next page load. page() also calls attach;
-        // attachment at Activity creation registers the bridge before the signed-in page loads.
+        register(view);
         refresh(view,true);
     }
     public static void refresh(WebView view,boolean force) {

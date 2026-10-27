@@ -36,6 +36,18 @@ def rebuild(source,dex,apktool,apkeditor,output):
   old=smali/'dev/aurora/tvpatch'
   if old.exists():shutil.rmtree(old);removed+=1
  if not removed:raise ValueError('Expected the previous TV extension; refusing to patch an unknown client')
+ # Register the bridge before Spotify's first loadUrl, not at page completion.
+ hooks=0
+ for smali in decoded.glob('smali*/com/spotify/tv/**/*.smali'):
+  text=smali.read_text()
+  pattern=r'(?m)^(    invoke-virtual(?:/range)? \{([^}]+)\}, Landroid/webkit/WebView;->loadUrl\([^\n]+)$'
+  def inject(match):
+   receiver=match.group(2).split(',')[0].split(' .. ')[0].strip()
+   return f'    invoke-static/range {{{receiver} .. {receiver}}}, Ldev/aurora/tvpatch/Hooks;->beforeLoad(Landroid/webkit/WebView;)V\n\n'+match.group(1)
+  text,count=re.subn(pattern,inject,text);hooks+=count
+  if count:smali.write_text(text)
+ if hooks!=2:raise ValueError(f'Expected two verified TV WebView loads, got {hooks}')
+ print(f'Pre-navigation bridge hooks: {hooks}')
  manifest=decoded/'AndroidManifest.xml';tree=ET.parse(manifest);root=tree.getroot()
  ns='http://schemas.android.com/apk/res/android';ET.register_namespace('android',ns)
  attr=lambda k:'{'+ns+'}'+k

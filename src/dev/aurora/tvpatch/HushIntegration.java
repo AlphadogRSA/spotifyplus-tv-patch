@@ -23,7 +23,6 @@ public final class HushIntegration {
     private static final ExecutorService WORK = Executors.newSingleThreadExecutor();
     private static SharedPreferences prefs(Context c) { return c.getSharedPreferences("spotifyplus_tv",0); }
     private static volatile String message = "Helper setup required";
-    private static boolean restarting;
     private static int recovery;
     private HushIntegration() {}
 
@@ -67,22 +66,21 @@ public final class HushIntegration {
             } else if(now-pending>20000) fail(p,now,"Recovery timed out · muting fallback");
             return;
         }
-        if(restarting || !HushPolicy.attempt(p.getBoolean("hushEnabled",false),HushHelper.ready(),ad,active,
+        if(!HushPolicy.attempt(p.getBoolean("hushEnabled",false),HushHelper.ready(),ad,active,
                 now,p.getLong("hushLastAttempt",0),p.getLong("hushLastFailure",0),pending,sleepAt))return;
-        restarting=true;
         // Commit before asking the external helper to kill this process.
         if(!p.edit().putLong("hushPending",now).putLong("hushLastAttempt",now).putLong("hushPendingSleepAt",sleepAt).commit()) {
-            restarting=false;message="Could not save recovery state";return;
+            message="Could not save recovery state";return;
         }
         message="Restarting Spotify";
         WORK.execute(() -> {
             String result=HushHelper.run(Commands.RESTART,"com.spotify.tv.android/.SpotifyTVActivity");
             // Normally this caller has died. If it survives, do not leave a latched request forever.
-            if(result==null)UI.post(() -> { restarting=false;fail(p,System.currentTimeMillis(),"Helper unavailable · muting fallback"); });
+            if(result==null)UI.post(() -> { fail(p,System.currentTimeMillis(),"Helper unavailable · muting fallback"); });
         });
     }
     private static void fail(SharedPreferences p,long now,String reason) {
-        p.edit().remove("hushPending").putLong("hushLastFailure",now).apply(); message=reason;restarting=false;
+        p.edit().remove("hushPending").putLong("hushLastFailure",now).apply(); message=reason;
     }
     public static void recover(Context c,MediaController controller) {
         SharedPreferences p=prefs(c);

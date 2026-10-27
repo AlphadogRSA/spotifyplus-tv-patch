@@ -122,6 +122,8 @@ public final class Hooks {
         }
         return null;
     }
+    static Activity activeActivity() { return activity.get(); }
+    public static void beforeLoad(WebView view) { NativeSettings.register(view); }
     public static void attach(Activity a) {
         try {
             activity = new WeakReference<>(a);
@@ -133,6 +135,7 @@ public final class Hooks {
             web = new WeakReference<>(view);
             if (token != null) connectController(a.getApplicationContext());
             if (!started) { started = true; UI.post(ticker); }
+            if (view != null) NativeSettings.register(view);
             HushIntegration.prepare(a);
             if (view != null) apply(view);
             Log.i("SPTV", "Activity extension attached");

@@ -6,6 +6,8 @@ import app.revanced.patcher.extensions.*
 import app.revanced.patcher.patch.*
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
@@ -116,7 +118,34 @@ val tvRemotePatch = bytecodePatch(name = "TV remote settings menu", use = false)
 val tvWebViewPatch = bytecodePatch(name = "TV WebView theme hook", use = false) {
     compatibleWith(PACKAGE(VERSION))
     dependsOn(tvLifecyclePatch, tvAssetsPatch)
-    apply { resolve(Fingerprints.page).addInstruction(0, "invoke-static/range {p1 .. p1}, $HOOK->page(Landroid/webkit/WebView;)V") }
+    apply {
+        resolve(Fingerprints.page).addInstruction(0, "invoke-static/range {p1 .. p1}, $HOOK->page(Landroid/webkit/WebView;)V")
+        var count = 0
+        for (definition in classDefs.filter { it.type.startsWith("Lcom/spotify/tv/") }) {
+            val candidates = definition.methods.filter { method ->
+                method.implementation?.instructions?.any {
+                    val ref = (it as? ReferenceInstruction)?.reference as? MethodReference
+                    ref?.definingClass == "Landroid/webkit/WebView;" && ref.name == "loadUrl"
+                } == true
+            }
+            if (candidates.isEmpty()) continue
+            val mutable = classDefs.getOrReplaceMutable(definition)
+            for (original in candidates) {
+                val method = mutable.methods.single { it.name == original.name && it.parameterTypes == original.parameterTypes && it.returnType == original.returnType }
+                val calls = method.implementation!!.instructions.withIndex().filter {
+                    val ref = (it.value as? ReferenceInstruction)?.reference as? MethodReference
+                    ref?.definingClass == "Landroid/webkit/WebView;" && ref.name == "loadUrl"
+                }
+                for (call in calls.asReversed()) {
+                    val register = (call.value as? FiveRegisterInstruction)?.registerC
+                        ?: (call.value as RegisterRangeInstruction).startRegister
+                    method.addInstruction(call.index, "invoke-static/range {v$register .. v$register}, $HOOK->beforeLoad(Landroid/webkit/WebView;)V")
+                    count++
+                }
+            }
+        }
+        require(count == 2) { "Expected two verified pre-navigation WebView loads, found $count" }
+    }
 }
 
 val tvSessionPatch = bytecodePatch(name = "TV own-session lyrics and timer", use = false) {
