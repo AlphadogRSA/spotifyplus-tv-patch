@@ -1,3 +1,14 @@
+# 1.3.0.6 focus-handoff verification - 27 October 2026
+
+- Regression test first reproduced Home OK being swallowed by a profile setting. Further cases reproduced stale unmarked header focus on profile reentry and a dialog consuming the prior OK release.
+- Shared browser/native key dispatch now prioritizes top navigation, clears stale profile/header focus, delegates Up from the first profile row and keeps matching key-release handling.
+- Focus handoff, native settings, Upgrade blocking, bounded scroll, theme, bridge lifecycle and presentation-efficiency regressions passed.
+- Final APK assets match source; signatures and retained certificate verified, alignment checked, and 1.3.0.6 installed as a same-key update on the Xiaomi TV.
+- Three real remote About-open/Back/Home-OK cycles each activated Home exactly once and removed injected profile rows on leaving.
+- Real remote Up released the profile to the top menu; native profile box shadow was none. Left/Right reached Home, and OK activated it exactly once. Upgrade click remained blocked.
+- Other installed apps unchanged; no uninstall or data clearing. Hush helper startup requested after update.
+- Audio response and full ad-recovery/queue behavior were not retested. Historical evidence follows.
+
 # 1.3.0.5 verification - 27 October 2026
 
 - New regressions reproduced direct Upgrade activation and missing new palettes before implementation, then passed for click blocking, virtual-focus OK, Left/Right skipping, upsell-route redirection, account/Now Playing access, and Ocean/Rose/Solar colors.

@@ -2,7 +2,7 @@ function(config) {
   'use strict';
   var old = window.__sptvSettings;
   if (old) return old.configure(config);
-  var cfg = config, section = null, host = null, previous = null, scheduled = false;
+  var cfg = config, section = null, host = null, lastNav = null, watchedNav = null, scheduled = false;
   var rows = [
     ['theme','Appearance','theme'], ['blur','Artwork blur','blurArtwork'],
     ['motion','Cinematic motion','motion'], ['promotions','Hide promotions','hideUpgrade'],
@@ -18,7 +18,8 @@ function(config) {
     '#sptv-native-settings h2{font:inherit;font-weight:700;margin:3rem 0 2rem}' +
     '#sptv-native-settings .profile-menu-item{min-height:8rem;box-sizing:border-box}' +
     '#sptv-native-settings button{display:block;width:100%;background:transparent;color:inherit;border:0;text-align:left;font:inherit;padding:1rem;border-radius:.5rem}' +
-    '#sptv-native-settings button:focus{outline:.4rem solid var(--sptv-settings-accent,#1ed760);outline-offset:.5rem}' +
+    '.sptv-settings-host.sptv-dom-navigation .list-button--focused:not(:focus),.sptv-settings-host.sptv-settings-suspended .list-button--focused{box-shadow:none!important}' +
+    '.sptv-settings-host button:focus{outline:.4rem solid var(--sptv-settings-accent,#1ed760);outline-offset:.5rem}' +
     '#sptv-native-settings .profile-menu-item__subtitle{font-size:.75em;opacity:.7;margin-top:1rem}';
   (document.head || document.documentElement).appendChild(style);
   function invoke(action) {
@@ -43,10 +44,47 @@ function(config) {
     if(row.top<viewport.top+12)host.scrollTop-=viewport.top+12-row.top;
     else if(row.bottom>viewport.bottom-12)host.scrollTop+=row.bottom-viewport.bottom+12;
   }
+  function navElement() { return document.querySelector('[data-testid="top-menu"]'); }
+  function profileVisible() { return !location.hash || /^#\/profile(?:[/?]|$)/.test(location.hash); }
+  function clearNavFocus() {
+    var nav=navElement();if(!nav)return;
+    Array.prototype.forEach.call(nav.querySelectorAll('.sptv-nav-focus'),function(e){e.classList.remove('sptv-nav-focus');});
+    if(nav.contains(document.activeElement))document.activeElement.blur();
+  }
+  function releaseSettingsFocus() {
+    if(!host)return;
+    if(host.contains(document.activeElement))document.activeElement.blur();
+    host.classList.remove('sptv-dom-navigation');
+  }
+  function syncFocus() {
+    var nav=navElement(), top=!!nav && nav.classList.contains('menu--focused');
+    if(host)host.classList.toggle('sptv-settings-suspended',top);
+    if(top)releaseSettingsFocus();else clearNavFocus();
+  }
+  var navObserver=new MutationObserver(syncFocus);
+  function watchNav() {
+    var nav=navElement();if(nav===watchedNav)return;
+    navObserver.disconnect();watchedNav=nav;
+    if(nav)navObserver.observe(nav,{attributes:true,attributeFilter:['class']});
+    syncFocus();
+  }
+  function focusChanged(event) {
+    var nav=navElement();
+    if(nav && nav.contains(event.target))releaseSettingsFocus();
+    else if(host && host.contains(event.target)) {
+      host.classList.add('sptv-dom-navigation');host.classList.remove('sptv-settings-suspended');clearNavFocus();
+    }
+  }
+  function cleanHost() {
+    releaseSettingsFocus();
+    if(host){host.classList.remove('sptv-settings-host','sptv-dom-navigation','sptv-settings-suspended');host.style.removeProperty('max-height');}
+    if(section)section.remove();section=null;host=null;
+  }
   function sync() {
     scheduled = false;
-    var next = document.querySelector('[data-testid="profile-menu"],.profile__menu');
-    if (!next) { if(section && section.parentNode)section.remove(); section=null;host=null;return; }
+    watchNav();
+    var next = profileVisible() ? document.querySelector('[data-testid="profile-menu"],.profile__menu') : null;
+    if (!next) { cleanHost();return; }
     if (!section || section.parentNode !== next) {
       if(section)section.remove();
       host=next; host.classList.add('sptv-settings-host');
@@ -79,7 +117,8 @@ function(config) {
   }
   var observer=new MutationObserver(defer);observer.observe(document.documentElement,{childList:true,subtree:true});
   function remote(key) {
-    if(!section || !host || !section.isConnected)return false;
+    var nav=navElement();
+    if(!profileVisible() || !section || !host || !section.isConnected || (nav && (nav.classList.contains('menu--focused') || nav.contains(document.activeElement))))return false;
     var controls=Array.prototype.slice.call(host.querySelectorAll('button'));
     var logout=document.querySelector('[data-testid="switch-user-button"]');
     if(logout && controls.indexOf(logout)<0)controls.push(logout);
@@ -88,7 +127,10 @@ function(config) {
     var index=controls.indexOf(current), next=null;
     if(key==='ArrowDown') {
       next=current===logout ? section.querySelector('button') : controls[Math.min(controls.length-1,index+1)];
-    } else if(key==='ArrowUp') next=controls[Math.max(0,index-1)];
+    } else if(key==='ArrowUp') {
+      if(index===0){releaseSettingsFocus();return false;}
+      next=controls[Math.max(0,index-1)];
+    }
     else if(key==='Enter' || key===' ') {
       if(!current)return false;
       current.click();return true;
@@ -104,19 +146,22 @@ function(config) {
     return false;
   }
   function blockUpgrade(event) {
+    var nav=navElement();
+    if(nav && nav.contains(event.target) && !(event.target.closest && event.target.closest(upgradeSelector)))releaseSettingsFocus();
     if(event.target.closest && event.target.closest(upgradeSelector)) {
       event.preventDefault();event.stopImmediatePropagation();
     }
   }
   function navigation(key,down) {
     if(upgradeRoute())return true;
-    var nav=document.querySelector('[data-testid="top-menu"]');
+    var nav=navElement();
     if(!nav)return false;
     if(key==='ArrowUp' || key==='ArrowDown') {
-      Array.prototype.forEach.call(nav.querySelectorAll('.sptv-nav-focus'),function(e){e.classList.remove('sptv-nav-focus');if(document.activeElement===e)e.blur();});
+      clearNavFocus();
       return false;
     }
-    if(!nav.classList.contains('menu--focused'))return false;
+    if(!nav.classList.contains('menu--focused') && !nav.contains(document.activeElement))return false;
+    releaseSettingsFocus();
     if(key!=='ArrowLeft' && key!=='ArrowRight' && key!=='Enter')return false;
     if(!down)return true;
     var navControls='button,[data-testid="now-playing-bar"],[role="button"]';
@@ -126,32 +171,43 @@ function(config) {
     if(all.indexOf(current)<0) {
       var marked=nav.querySelector('[class*="--focused"]');current=marked && (marked.closest(navControls) || marked.querySelector(navControls));
     }
+    if(!current)current=lastNav && lastNav.isConnected && nav.contains(lastNav) ? lastNav : nav.querySelector('[data-testid="top-menu--home"]') || controls[0];
     var index=controls.indexOf(current), next;
     if(current && current.matches(upgradeSelector)) {
       var origin=all.indexOf(current), direction=key==='ArrowLeft' ? -1 : 1;
       for(var i=origin+direction;i>=0 && i<all.length;i+=direction)if(controls.indexOf(all[i])>=0){next=all[i];break;}
       next=next || controls[0];
     } else if(key==='Enter') {
-      if(current && controls.indexOf(current)>=0)current.click();
+      if(current && controls.indexOf(current)>=0){lastNav=current;current.click();}
       return true;
     } else next=controls[Math.max(0,Math.min(controls.length-1,index+(key==='ArrowRight'?1:-1)))];
     if(next) {
       all.forEach(function(e){e.classList.remove('sptv-nav-focus');e.className=String(e.className).replace(/\S*--focused/g,'').trim();});
-      next.classList.add('sptv-nav-focus');if(next.tabIndex<0)next.tabIndex=0;next.focus({preventScroll:true});
+      lastNav=next;next.classList.add('sptv-nav-focus');if(next.tabIndex<0)next.tabIndex=0;next.focus({preventScroll:true});
     }
     return true;
   }
-  document.addEventListener('click',blockUpgrade,true);
-  window.addEventListener('hashchange',upgradeRoute);upgradeRoute();
-  function key(event) {
-    if(remote(event.key)){event.preventDefault();event.stopImmediatePropagation();}
+  function routeChanged() {releaseSettingsFocus();clearNavFocus();lastNav=null;upgradeRoute();sync();}
+  var handledKeys=Object.create(null);
+  function dispatch(key,down) {
+    if(!down){var handled=handledKeys[key]===true;delete handledKeys[key];return handled;}
+    var handled=navigation(key,true) || (profileVisible() && remote(key));
+    handledKeys[key]=!!handled;return !!handled;
   }
+  document.addEventListener('click',blockUpgrade,true);
+  document.addEventListener('focusin',focusChanged,true);
+  window.addEventListener('hashchange',routeChanged);upgradeRoute();
+  function key(event) {
+    if(dispatch(event.key,true)){event.preventDefault();event.stopImmediatePropagation();}
+  }
+  function keyUp(event) {if(dispatch(event.key,false)){event.preventDefault();event.stopImmediatePropagation();}}
   document.addEventListener('keydown',key,true);
+  document.addEventListener('keyup',keyUp,true);
   window.addEventListener('resize',fitHost);
-  var api={navigation:navigation,remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
+  var api={dispatch:dispatch,navigation:navigation,remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
     var nativeButton=document.querySelector('[data-testid="top-menu--settings"]');
     if(nativeButton){nativeButton.click();return true;}
     return !!document.querySelector('[data-testid="profile-menu"],.profile__menu');
-  },dispose:function(){document.removeEventListener('click',blockUpgrade,true);window.removeEventListener('hashchange',upgradeRoute);window.removeEventListener('resize',fitHost);observer.disconnect();document.removeEventListener('keydown',key,true);if(section)section.remove();if(host){host.classList.remove('sptv-settings-host');host.style.removeProperty('max-height');}style.remove();}};
+  },dispose:function(){navObserver.disconnect();document.removeEventListener('focusin',focusChanged,true);document.removeEventListener('click',blockUpgrade,true);window.removeEventListener('hashchange',routeChanged);window.removeEventListener('resize',fitHost);observer.disconnect();document.removeEventListener('keydown',key,true);document.removeEventListener('keyup',keyUp,true);clearNavFocus();cleanHost();style.remove();}};
   window.__sptvSettings=api;sync();return !!section;
 }

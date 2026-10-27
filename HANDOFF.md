@@ -1,3 +1,7 @@
+# Current update: 1.3.0.6
+
+Shared key routing fixes stale Spotify+ selection and missed Home OK. Native dialogs no longer leave a release state that swallows the next press. Verified three About/Home cycles plus remote top-menu handoff; current source/build remains on feat/hush-tv.
+
 # Current update: 1.3.0.5
 
 Upgrade UI activation is blocked at click, native remote navigation and SPA upsell-route levels. About includes Tumelo Rathebe / AlphadogRSA with an offline GitHub QR. Theme cycling now includes Ocean, Rose and Solar, preserving existing theme indices. The installed same-key build and QR screenshot were verified on the TV.

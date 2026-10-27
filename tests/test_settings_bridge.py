@@ -28,17 +28,11 @@ public class BridgeLifecycle {public static void main(String[] a)throws Exceptio
  NativeSettings.register(v);assert v.registrations==1 : "Repeated attachment must not replace bridge";
  v.url="https://example.com/";action.invoke(v.bridge,"theme");assert Hooks.calls==1 : "Untrusted navigation is rejected";
  v.url="https://api-partner.spotify.com/tvapp?platform=androidtv#/profile";
- assert NativeSettings.remote(v,20,true) : "Native D-pad must reach the settings focus controller";
- assert v.lastScript.indexOf((char)92)<0 : "Generated JavaScript must not contain escaped argument quotes";
- assert v.lastScript.contains("ArrowDown") : "Native Down maps to the browser action";
- String prior=v.lastScript;assert NativeSettings.remote(v,20,false);assert v.lastScript==prior : "Key-up must not move focus twice";
- assert !NativeSettings.remote(v,4,true) : "Back stays with Spotify";
- v.url="https://api-partner.spotify.com/tvapp#/home";assert !NativeSettings.remote(v,20,true) : "Home navigation stays with Spotify";
  int[] replay={0};v.url="https://api-partner.spotify.com/tvapp#/view/home";
- assert NativeSettings.navigation(v,22,true,()->replay[0]++);assert replay[0]==1 : "Unhandled native keys replay exactly once";
+ assert NativeSettings.navigation(v,22,true,()->replay[0]++);assert replay[0]==1 : "Unhandled native keys replay exactly once";assert v.lastScript.contains(".dispatch(") : "All key routing must use the shared focus controller";
  v.reply="true";assert NativeSettings.navigation(v,23,true,()->replay[0]++);assert replay[0]==1 : "Blocked Upgrade OK must never replay";
  assert !NativeSettings.navigation(v,4,true,()->replay[0]++) : "Back stays native";
- v.url="https://example.com/#/profile";assert !NativeSettings.remote(v,20,true) : "Untrusted profile routes are rejected";
+ v.url="https://example.com/#/profile";assert !NativeSettings.navigation(v,20,true,()->replay[0]++) : "Untrusted profile routes are rejected";
  System.out.println("Bridge lifecycle: first-load registration and invocation-time trust passed");
 }}''',
 }

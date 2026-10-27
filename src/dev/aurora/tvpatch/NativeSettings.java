@@ -55,20 +55,11 @@ public final class NativeSettings {
             view.evaluateJavascript("("+script+")("+json+")",null);
         }catch(Exception ignored){}
     }
-    public static boolean remote(WebView view, int code, boolean down) {
-        if(view==null || !trusted(view))return false;
-        String url=view.getUrl();
-        if(url==null || !url.matches(".*#/profile/?(?:[?].*)?$"))return false;
-        String key=code==19 ? "ArrowUp" : code==20 ? "ArrowDown" : (code==23 || code==66) ? "Enter" : null;
-        if(key==null)return false;
-        if(down)view.evaluateJavascript("window.__sptvSettings && window.__sptvSettings.remote(\""+key+"\")",null);
-        return true;
-    }
     public static boolean navigation(WebView view,int code,boolean down,Runnable fallback) {
         if(view==null || !trusted(view))return false;
         String key=code==19 ? "ArrowUp" : code==20 ? "ArrowDown" : code==21 ? "ArrowLeft" : code==22 ? "ArrowRight" : (code==23 || code==66) ? "Enter" : null;
         if(key==null)return false;
-        view.evaluateJavascript("!!(window.__sptvSettings && window.__sptvSettings.navigation(\""+key+"\","+down+"))",result -> {
+        view.evaluateJavascript("!!(window.__sptvSettings && window.__sptvSettings.dispatch(\""+key+"\","+down+"))",result -> {
             if(!"true".equals(result) && attached.get()==view && trusted(view))fallback.run();
         });
         return true;
