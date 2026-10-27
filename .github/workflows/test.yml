@@ -30,6 +30,10 @@ jobs:
           java -ea -cp test-classes AudioSessionsTest
           javac -d test-classes src/dev/aurora/tvpatch/AudioEffectPlan.java tests/AudioEffectPlanTest.java
           java -ea -cp test-classes AudioEffectPlanTest
+          javac -d test-classes src/dev/aurora/tvpatch/SleepDeadline.java tests/SleepDeadlineTest.java
+          java -ea -cp test-classes SleepDeadlineTest
+          javac -d test-classes hush/overlay/java/io/coldmew/hush/TvSkipPolicy.java hush/tests/TvSkipPolicyTest.java
+          java -ea -cp test-classes TvSkipPolicyTest
       - name: Test modular fingerprints
         run: bash revanced/gradlew -p revanced testFingerprints
       - name: Check source tools
@@ -54,3 +58,37 @@ jobs:
           node tests/presentation.test.cjs
           node tests/theme-regression.test.cjs
           node tests/presentation-performance.test.cjs
+  hush-tv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Prepare pinned Hush TV sources
+        run: |
+          python3 -m unittest discover -s hush/tests -v
+          python3 hush/prepare.py
+      - name: Install pinned Android build platform
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Compile the complete TV extension and build its DEX
+        run: |
+          mkdir -p .tools/extension-classes .tools/extension-dex
+          javac -encoding UTF-8 -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d .tools/extension-classes src/dev/aurora/tvpatch/*.java
+          jar cf .tools/extension.jar -C .tools/extension-classes .
+          "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 26 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output .tools/extension-dex .tools/extension.jar
+      - name: Test and build the Hush companion
+        env:
+          HUSH_SIGNING: /tmp/no-upstream-signing.properties
+        run: bash hush/build/android/gradlew -p hush/build/android testDebugUnitTest assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hush-TV-unsigned
+          path: |
+            hush/build/android/app/build/outputs/apk/release/app-release-unsigned.apk
+            hush/build/android/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error

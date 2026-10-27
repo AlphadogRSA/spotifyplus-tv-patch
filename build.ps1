@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory)][string]$KeyStore,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$KeyAlias = 'androiddebugkey',
-    [string]$GradleExecutable
+    [string]$GradleExecutable,
+    [switch]$WithoutHush
 )
 $ErrorActionPreference = 'Stop'
 if (-not $env:SPTV_STORE_PASSWORD) { throw 'Set SPTV_STORE_PASSWORD for your own keystore; never commit the key or password.' }
@@ -40,7 +41,7 @@ Check-Exit 'Verified patcher download'
 if (-not $GradleExecutable) { $GradleExecutable = Join-Path $patchProject 'gradlew.bat' }
 & $GradleExecutable -p $patchProject testFingerprints bundle "-PextensionDex=$(Join-Path $out 'dex/classes.dex')"
 Check-Exit 'Kotlin patch compilation and fingerprint tests'
-$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-0.5.rvp'
+$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-0.6.rvp'
 $classpath = $bundle + [IO.Path]::PathSeparator + (Join-Path $patchProject '.tools/revanced-cli-6.0.0-all.jar')
 & (Join-Path $jdk 'bin/java.exe') -cp $classpath dev.aurora.patches.RunnerKt apply $bundle (Join-Path $original 'base.apk') (Join-Path $out 'patched-unsigned.apk') (Join-Path $out 'patch') (Join-Path $tools 'aapt2.exe')
 Check-Exit 'Modular patching and APK rebuild'
@@ -58,5 +59,8 @@ foreach ($entry in $hashes.PSObject.Properties) {
     & (Join-Path $tools 'apksigner.bat') verify --min-sdk-version 26 $signed
     Check-Exit 'Signature verification'
 }
+if (-not $WithoutHush) {
+    & (Join-Path $PSScriptRoot 'hush/build.ps1') -AndroidSdk $sdk -JavaHome $jdk -KeyStore $signingKey -KeyAlias $KeyAlias -OutputApk (Join-Path $out 'signed/Hush-TV.apk')
+}
 Compress-Archive -Path (Join-Path $out 'signed/*.apk') -DestinationPath (Join-Path $out 'SpotifyPlus-TV-patched.zip')
-Write-Output "Verified four-APK installation set: $(Join-Path $out 'signed')"
+Write-Output "Verified installation set (Spotify splits plus optional Hush companion): $(Join-Path $out 'signed')"

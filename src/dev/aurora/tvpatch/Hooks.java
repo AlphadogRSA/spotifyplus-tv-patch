@@ -66,6 +66,7 @@ public final class Hooks {
     private static long nextLookupAt;
     private static Button fetchButton, plainButton;
     private static long sleepAt;
+    private static boolean detectedAd;
     private static String script;
     private static boolean longSelect;
     private static boolean forwardingKey;
@@ -78,15 +79,21 @@ public final class Hooks {
     private static final Runnable ticker = new Runnable() {
         @Override public void run() {
             try {
-                if (sleepAt > 0 && SystemClock.elapsedRealtime() >= sleepAt) {
+                if (controller != null && SleepDeadline.expired(sleepAt, System.currentTimeMillis())) {
+                    controller.getTransportControls().pause();
                     sleepAt = 0;
-                    if (controller != null) controller.getTransportControls().pause();
+                    Activity owner = activity.get();
+                    if (owner != null) {
+                        prefs(owner).edit().remove("sleepAt").apply();
+                        HushClient.signal(owner, token, detectedAd, sleepAt, true);
+                    }
                     toast("Sleep timer finished");
                 }
                 if (lyricDialog != null && lyricDialog.isShowing()) updateLyrics();
                 applyAdVolume();
                 Activity current = activity.get();
                 if (current != null) {
+                    HushClient.signal(current, token, detectedAd, sleepAt, false);
                     PlaybackState playback = cachedPlayback;
                     AudioDsp.tick(current, playback != null && playback.getState() == PlaybackState.STATE_PLAYING);
                 }
@@ -117,6 +124,9 @@ public final class Hooks {
     public static void attach(Activity a) {
         try {
             activity = new WeakReference<>(a);
+            int boot = android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+            sleepAt = prefs(a).getInt("sleepBoot", boot) == boot ? prefs(a).getLong("sleepAt", 0) : 0;
+            if (sleepAt == 0) prefs(a).edit().remove("sleepAt").apply();
             AD_MUTE.enabled(prefs(a).getBoolean("muteAds", true));
             WebView view = find(a.getWindow().getDecorView());
             web = new WeakReference<>(view);
@@ -167,6 +177,7 @@ public final class Hooks {
         };
         next.registerCallback(controllerCallback, UI);
         cachedPlayback = next.getPlaybackState(); cachedMetadata = next.getMetadata();
+        HushClient.signal(context, token, detectedAd, sleepAt, true);
     }
     private static void clearLyricViews() {
         lyricTitle = null; lyricStatus = null; fetchButton = null; plainButton = null;
@@ -193,7 +204,12 @@ public final class Hooks {
     }
     /** Observe the existing ad flag without altering the ad-break timeline. */
     public static void adState(boolean playing) {
-        UI.post(() -> { AD_MUTE.ad(playing, SystemClock.elapsedRealtime()); applyAdVolume(); });
+        UI.post(() -> {
+            detectedAd = playing;
+            AD_MUTE.ad(playing, SystemClock.elapsedRealtime()); applyAdVolume();
+            Activity a = activity.get();
+            if (a != null) HushClient.signal(a, token, detectedAd, sleepAt, true);
+        });
     }
     /** Intercept TVBridge's native player volume; never Android's device volume. */
     public static synchronized void playbackEvent(Object router, int event, int volume, int remote) {
@@ -378,18 +394,25 @@ public final class Hooks {
             AD_MUTE.enabled(value); applyAdVolume();
             mute.setText("Mute detected ads: " + (value ? "on" : "off"));
         }); add(body, mute);
+        add(body, button(a, "Hush · ad-break skipping", () -> {
+            HushClient.signal(a, token, detectedAd, sleepAt, true);
+            HushClient.open(a);
+        }));
         add(body, button(a, "Audio · Equalizer & Boost", () -> { menu.dismiss(); showAudio(a); }));
         add(body, button(a, "Lyrics · local / LRCLIB", () -> { menu.dismiss(); showLyrics(a); }));
         add(body, button(a, "Sleep timer" + (sleepAt > 0 ? " · active" : ""), () -> {
             menu.dismiss(); trackDialog(new AlertDialog.Builder(a).setTitle("Pause this Spotify session after…")
                 .setItems(new String[]{"15 minutes", "30 minutes", "60 minutes", "Cancel timer"}, (dialog, which) -> {
-                    sleepAt = which == 3 ? 0 : SystemClock.elapsedRealtime() + new long[]{900000,1800000,3600000}[which];
-                    toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. Keep Spotify running.");
+                    sleepAt = which == 3 ? 0 : System.currentTimeMillis() + new long[]{900000,1800000,3600000}[which];
+                    int boot = android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+                    p.edit().putLong("sleepAt", sleepAt).putInt("sleepBoot", boot).apply();
+                    HushClient.signal(a, token, detectedAd, sleepAt, true);
+                    toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. It survives Spotify restarts.");
                 }).create()).show();
         }));
         add(body, button(a, "About", () -> trackDialog(new AlertDialog.Builder(a)
-            .setTitle("Spotify+ TV · 0.5")
-            .setMessage("Made for your TV remote.\n\nArtwork blur, accent colors, lyrics, sleep timer, ad muting and audio controls.\n\nInspired by SpotifyPlus (MIT, © 2025 Devon Shoutz), Eevee's lyrics features and Spicetify's UI customization. Original Android TV implementation.\n\nOptional lyrics lookup sends track title, artist, album and duration to LRCLIB. Full source and license notices are included in the project and APK assets.")
+            .setTitle("Spotify+ TV · 0.6")
+            .setMessage("Made for your TV remote.\n\nArtwork blur, accent colors, lyrics, sleep timer, ad muting, optional Hush companion support and audio controls.\n\nInspired by SpotifyPlus (MIT, © 2025 Devon Shoutz), Eevee's lyrics features and Spicetify's UI customization. Original Android TV implementation.\n\nOptional lyrics lookup sends track title, artist, album and duration to LRCLIB. Full source and license notices are included in the project and APK assets.")
             .setPositiveButton("Close", null).create()).show()));
         add(body, button(a, "Return to Spotify", () -> menu.dismiss()));
         ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(Color.TRANSPARENT); scroll.addView(body);

@@ -29,7 +29,7 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
                 if (node.getAttributeNS(android, "name") == "com.spotify.tv.android.SpotifyTVActivity")
                     node.setAttributeNS(android, "android:label", "Spotify+ TV")
             }
-            for (permission in listOf("android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.DUMP")) {
+            for (permission in listOf("android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.DUMP", "dev.aurora.hushtv.permission.TV_BRIDGE")) {
                 if ((0 until doc.getElementsByTagName("uses-permission").length).none {
                     (doc.getElementsByTagName("uses-permission").item(it) as Element).getAttributeNS(android, "name") == permission
                 }) {
@@ -38,6 +38,15 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
                     doc.documentElement.insertBefore(element, app)
                 }
             }
+            val queries = (doc.getElementsByTagName("queries").item(0) as? Element)
+                ?: doc.createElement("queries").also { doc.documentElement.insertBefore(it, app) }
+            if ((0 until queries.getElementsByTagName("package").length).none {
+                (queries.getElementsByTagName("package").item(it) as Element).getAttributeNS(android, "name") == "dev.aurora.hushtv"
+            }) {
+                queries.appendChild(doc.createElement("package").also {
+                    it.setAttributeNS(android, "android:name", "dev.aurora.hushtv")
+                })
+            }
         }
     }
 }
@@ -45,7 +54,7 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
 val tvAssetsPatch = rawResourcePatch(name = "TV theme assets and notices", use = false) {
     compatibleWith(PACKAGE(VERSION))
     apply {
-        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md")) {
+        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md", "HUSH-NOTICE.txt")) {
             val target = get("assets/$name", false)
             target.parentFile.mkdirs()
             requireNotNull(object {}.javaClass.classLoader.getResourceAsStream(name)) { "Missing bundled asset $name" }.use { input ->

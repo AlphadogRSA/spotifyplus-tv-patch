@@ -1,4 +1,10 @@
-# Spotify+ TV 0.5
+# Spotify+ TV 0.6 · Hush integration
+
+Adds **Hush · ad-break skipping** to the remote menu, backed by a separately installed Hush TV companion. The companion is opt-in, uses the native TV ad flag and matching-signature session bridge, and keeps restart recovery outside Spotify’s process. Existing local ad muting remains the fallback. The TV sleep timer now survives Spotify process restarts. See [HUSH.md](HUSH.md) for setup, builds, GPL source attribution and required TV checks.
+
+This is a source integration; actual TV ad skipping and queue recovery still require device verification.
+
+## Version 0.5 presentation improvements
 
 Version 0.5 fixes themes across the actual TV interface: class-based focus outlines, primary actions, playback progress, playing-track labels and context menus. Aurora, Midnight and Ember colors now use the TV selectors verified on the installed UI; Spotify Original restores the original colors. Artwork/layout and existing player functions remain in place.
 

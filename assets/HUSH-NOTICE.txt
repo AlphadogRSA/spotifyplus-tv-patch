@@ -1,0 +1,12 @@
+Hush companion integration
+
+The MIT Spotify+ TV extension communicates with a separately installed Hush TV companion.
+The companion is derived from coldMEW/Hush 2.0.2, commit
+4e9ded397338de5c69b1784c636feb3d34a8de01, under GPL-3.0.
+
+Upstream: https://github.com/coldMEW/Hush
+Adaptation, pinned source, modifications and build instructions:
+https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/feat/hush-tv/hush
+
+The companion includes the full upstream GPL license and a source notice.
+The companion's license does not relicense Spotify's proprietary binaries.

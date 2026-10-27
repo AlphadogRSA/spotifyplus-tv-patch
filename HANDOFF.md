@@ -1,6 +1,10 @@
 # Handoff
 
-## Current release: 0.5
+## Current source version: 0.6 (Hush TV integration; device verification pending)
+
+The Hush feature is in the TV menu. A pinned upstream companion, reproducible TV adaptations and same-key build/install support are under `hush/`; see HUSH.md. Native session/ad signals use a signature-protected bridge. The companion keeps restart recovery alive in a foreground service; player-local muting remains the fallback. The existing 0.5 device observations below are historical and do not verify 0.6. Original proprietary APKs and the retained private signing key are not available in this workspace, so no new signed Spotify installation set or TV deployment is claimed.
+
+## Previously device-tested release: 0.5
 
 The 0.5 follow-up fixes themes against verified TV class selectors, expands promotion/Upgrade hiding and optimizes DOM scanning, playback callbacks, dialog cleanup and DSP writes. See VERIFICATION.md for the measured checks. It keeps all 0.4 functions and persisted settings. The remote theme cycle and Spotify-only audio activation were observed after installing 0.5.
 
