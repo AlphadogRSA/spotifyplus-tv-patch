@@ -6,7 +6,7 @@ The 0.5 follow-up fixes themes against verified TV class selectors, expands prom
 
 The default build now uses modular Kotlin ReVanced patches and a precompiled MIT extension DEX. It adds default-on recognized-ad muting, Upgrade-button hiding, Spotify-style accents and background blur, polished TV labels, and per-process/session EQ plus 0–6 dB boost. There is no shared-output/session-0 effect path. See AUDIO.md for one-time ADB diagnostic permission setup. `install.ps1` installs all four APKs, grants that permission and launches the client. The same retained private key was used for updates; no uninstall was used for 0.4. The user paired Spotify again during testing.
 
-The final four-APK build is specific to the inspected Spotify TV 1.134.2 ARMv7/English/TV-density installation. Source archives and the private GitHub release exclude the local signing key, original-install backup, account data, fetched lyrics and user screenshots. The release installation archive necessarily includes the patched proprietary app and required splits for this personal installation; the MIT license does not relicense those binaries.
+The final four-APK build is specific to the inspected Spotify TV 1.134.2 ARMv7/English/TV-density installation. Source archives and the private GitHub release exclude the local signing key, original-install backup, account data, fetched lyrics and user screenshots. The release installation archive necessarily includes the patched proprietary app and required splits for this installation; the MIT license does not relicense those binaries.
 
 This repository contains only the original TV extension and build/test tools. The proprietary original APKs, patched APK set, account data, signing key and fetched lyrics are intentionally excluded.
 
