@@ -6,7 +6,7 @@ Hush’s helper ships inside Spotify+ TV 1.3.0.1. There is no companion APK, ext
 
 1. Build/sign with the same retained private key as the existing TV installation, then update without uninstalling. The generated unsigned APK cannot be installed until signed.
 2. Launch Spotify once. The app writes a private, token-bound startup script for its embedded helper.
-3. Run `start-hush.ps1 -Serial TV_IP:5555` over your authorized ADB connection. The command stays private; the script does not print its token. Repeat after a TV reboot or APK update. The app remains debuggable as in the existing personal build so the installer can read this app-private startup command through `run-as`.
+3. Run `start-hush.ps1 -Serial TV_IP:5555` over your authorized ADB connection. The command stays private; the script does not print its token. Repeat after a TV reboot or APK update. The app remains debuggable as in the existing build so the installer can read this app-private startup command through `run-as`.
 4. Open Spotify’s own Settings/profile screen. Under Spotify+ TV, check **Hush helper setup**, then turn **Hush ad-break skipping** on. Keep **Mute detected ads** on for the fallback.
 
 The helper provider accepts only Android’s shell UID, requires the privileged cross-user permission and validates a random token from private app storage. Its adapted command builder accepts only the fixed restart action for `com.spotify.tv.android/.SpotifyTVActivity`; it rejects arbitrary actions/components. It does not install or control another application.

@@ -66,7 +66,7 @@ def inject(decoded):
     ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
     tree = ET.parse(manifest)
     app = tree.getroot().find('application')
-    app.set(android + 'debuggable', 'true')  # Personal sideload; local LRC run-as import only.
+    app.set(android + 'debuggable', 'true')  # sideload; local LRC run-as import only.
     app.set(android + 'label', 'Spotify TV +')
     for child in app.findall('activity'):
         if child.get(android + 'name') == 'com.spotify.tv.android.SpotifyTVActivity':
@@ -101,7 +101,7 @@ def main():
         bad = z.testzip()
         if bad:
             raise ValueError('APK ZIP integrity failed: ' + bad)
-    print('Prepared unsigned personal patch:', unsigned)
+    print('Prepared unsigned patch:', unsigned)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 function(config) {
   'use strict';
   // Original TV presentation code. Existing artwork only; no media/account requests.
-  var VERSION = 5, ID = 'spotifyplus-tv-style';
+  var VERSION = 6, ID = 'spotifyplus-tv-style';
   var previous = window.__spotifyPlusTV;
   if (previous && previous.version === VERSION) return previous.configure(config);
   if (previous) {
@@ -50,6 +50,7 @@ function(config) {
       + '.sptv-art-blur{filter:blur(32px) brightness(.58)!important;transform:scale(1.08)!important}'
       + '@keyframes sptv-drift{from{transform:scale(1.08) translateX(-.5%)}to{transform:scale(1.12) translateX(.5%)}}'
       + '@media(prefers-reduced-motion:reduce){.sptv-background:before{animation:none!important}}';
+    if (c.hideUpgrade) sheet += '[data-testid="upsell-menu-item"],.upsell-menu-item{display:none!important;visibility:hidden!important;pointer-events:none!important}';
     if (accent) {
       sheet += ':root{--sptv-accent:' + accent + ';--text-bright-accent:' + accent + '!important;--essential-bright-accent:' + accent + '!important}'
         // TV uses class-based focus and hard-coded colors, not desktop Spotify tokens.

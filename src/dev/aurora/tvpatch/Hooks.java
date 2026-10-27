@@ -389,7 +389,7 @@ public final class Hooks {
         values.put("hushStatus", HushIntegration.status());
         values.put("audioStatus", AudioDsp.status());
         values.put("sleep", sleepAt > 0 ? "Active · survives Spotify restarts" : "Off");
-        values.put("version", "1.3.0.3");
+        values.put("version", "1.3.0.4");
         return values;
     }
     public static void settingsAction(Activity a, String action) {

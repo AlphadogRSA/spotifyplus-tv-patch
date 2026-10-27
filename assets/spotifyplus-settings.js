@@ -12,7 +12,7 @@ function(config) {
     ['about','About Spotify+ TV','version']
   ];
   var style = document.createElement('style'); style.id = 'sptv-native-settings-style';
-  style.textContent = '.sptv-settings-host{max-height:calc(100vh - 20rem);overflow-y:auto;padding-right:1rem;scrollbar-width:thin}' +
+  style.textContent = '.sptv-settings-host{max-height:calc(100vh - 20rem);overflow-y:auto;overscroll-behavior:contain;padding-right:1rem;scrollbar-width:thin}' +
     '#sptv-native-settings{color:inherit;font:inherit;padding-bottom:3rem}' +
     '#sptv-native-settings h2{font:inherit;font-weight:700;margin:3rem 0 2rem}' +
     '#sptv-native-settings .profile-menu-item{min-height:8rem;box-sizing:border-box}' +
@@ -31,6 +31,17 @@ function(config) {
     }
     return row[2];
   }
+  function fitHost() {
+    if(!host)return;
+    var top=host.getBoundingClientRect().top;
+    host.style.maxHeight=Math.max(120,window.innerHeight-Math.max(0,top)-32)+'px';
+  }
+  function reveal(button) {
+    if(!host || !host.contains(button))return;
+    var viewport=host.getBoundingClientRect(), row=button.getBoundingClientRect();
+    if(row.top<viewport.top+12)host.scrollTop-=viewport.top+12-row.top;
+    else if(row.bottom>viewport.bottom-12)host.scrollTop+=row.bottom-viewport.bottom+12;
+  }
   function sync() {
     scheduled = false;
     var next = document.querySelector('[data-testid="profile-menu"],.profile__menu');
@@ -48,11 +59,12 @@ function(config) {
         var name=document.createElement('span');name.textContent=row[1];button.appendChild(name);
         var value=document.createElement('p');value.className='profile-menu-item__subtitle';button.appendChild(value);
         button.addEventListener('click',function(event){event.preventDefault();event.stopPropagation();invoke(row[0]);});
-        button.addEventListener('focus',function(){button.scrollIntoView({block:'nearest'});});
+        button.addEventListener('focus',function(){reveal(button);});
         item.appendChild(button);section.appendChild(item);
       });
       host.appendChild(section);
     }
+    fitHost();
     section.style.setProperty('--sptv-settings-accent',['#ffffff','#91e7cf','#bbb3ff','#ffbf98'][Math.abs(Number(cfg.theme)||0)%4]);
     rows.forEach(function(row) {
       var button=section.querySelector('[data-sptv-action="'+row[0]+'"]'), value=label(row);
@@ -81,16 +93,17 @@ function(config) {
       current.click();return true;
     } else return false;
     if(!next)return false;
-    next.focus();next.scrollIntoView({block:'nearest'});return true;
+    next.focus({preventScroll:true});reveal(next);return true;
   }
   function key(event) {
     if(remote(event.key)){event.preventDefault();event.stopImmediatePropagation();}
   }
   document.addEventListener('keydown',key,true);
+  window.addEventListener('resize',fitHost);
   var api={remote:remote,configure:function(next){cfg=next;sync();return !!section;},open:function(){
     var nativeButton=document.querySelector('[data-testid="top-menu--settings"]');
     if(nativeButton){nativeButton.click();return true;}
     return !!document.querySelector('[data-testid="profile-menu"],.profile__menu');
-  },dispose:function(){observer.disconnect();document.removeEventListener('keydown',key,true);if(section)section.remove();if(host)host.classList.remove('sptv-settings-host');style.remove();}};
+  },dispose:function(){window.removeEventListener('resize',fitHost);observer.disconnect();document.removeEventListener('keydown',key,true);if(section)section.remove();if(host){host.classList.remove('sptv-settings-host');host.style.removeProperty('max-height');}style.remove();}};
   window.__sptvSettings=api;sync();return !!section;
 }

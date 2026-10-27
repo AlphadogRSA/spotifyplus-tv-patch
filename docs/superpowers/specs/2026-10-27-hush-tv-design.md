@@ -8,4 +8,4 @@ Place all entry controls in the observed native profile settings menu, preservin
 
 The EQ has ten visual curve points (31 Hz–16 kHz), log-frequency interpolation onto real output bands, ±6 dB range and 0–6 dB post-gain. Preserve five-band settings via migration. Provide remote, touch and accessibility adjustment.
 
-Rebuild the exact prior personal release, replace only extension classes/assets, add the embedded provider and merge the inspected splits into one unsigned APK. Retain versionCode 2340200 for the base client. The retained private signing key is unavailable; do not claim an installable same-key update or device verification without it.
+Rebuild the exact prior release, replace only extension classes/assets, add the embedded provider and merge the inspected splits into one unsigned APK. Retain versionCode 2340200 for the base client. The retained private signing key is unavailable; do not claim an installable same-key update or device verification without it.

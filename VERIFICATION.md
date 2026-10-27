@@ -1,3 +1,13 @@
+# 1.3.0.4 UI verification - 27 October 2026
+
+- Regression fixtures first reproduced the outer-header scroll offset and the first-frame Upgrade control visibility, then passed with bounded inner scrolling and direct CSS hiding.
+- Settings, Upgrade entry, native navigation, presentation, theme regressions, layout efficiency and native bridge lifecycle tests passed.
+- APK compiled with the pinned helper; signature/certificate, alignment and version metadata checks passed.
+- Same-key update installed on Xiaomi MiTV-AESP0 as 1.3.0.4. Real ADB D-pad events reached all 11 settings rows and kept the selected control visible.
+- Header position remained unchanged during a full downward/upward traversal and after returning Home. Main Upgrade controls computed to display:none with zero rendered width.
+- Pre/post third-party app lists unchanged; no uninstall or data clearing. Helper startup requested after the update.
+- Audio quality and Hush ad-recovery/queue behavior were not retested. Older evidence below retains its original scope.
+
 # 1.3.0.3 remote-navigation verification - 27 October 2026
 
 - Passed native bridge lifecycle/routing and browser settings regression tests, including virtual focus, key-up suppression and rejection outside trusted profile routes.
@@ -89,4 +99,4 @@ The patched Spotify TV installation replaced `com.spotify.tv.android` on the con
 - This is a tested experimental subset, not a complete TV port of all mobile SpotifyPlus features. See README.md for explicit omissions.
 - The build is intentionally debuggable to support private LRC import through trusted ADB. It uses a local development signing key. The original app's login was cleared by the necessary uninstall/reinstall.
 
-The TV was left at Spotify's regular login screen after checks. No login secrets were collected. The source ZIP contains only the original extension, patcher, helper, tests and notices; proprietary installation files are separate personal-device deliverables.
+The TV was left at Spotify's regular login screen after checks. No login secrets were collected. The source ZIP contains only the original extension, patcher, helper, tests and notices; proprietary installation files are separate device-specific deliverables.
