@@ -1,120 +1,63 @@
-# Spotify+ TV 0.5
+# Spotify+ TV 1.3.0.2
 
-Version 0.5 fixes themes across the actual TV interface: class-based focus outlines, primary actions, playback progress, playing-track labels and context menus. Aurora, Midnight and Ember colors now use the TV selectors verified on the installed UI; Spotify Original restores the original colors. Artwork/layout and existing player functions remain in place.
+A personal modification of the inspected Spotify TV 1.134.2 ARMv7 client. **One installed Spotify app**, with the custom controls integrated into Spotify’s existing Settings/profile menu.
 
-Promotion hiding now covers Upgrade text, navigation offers, banners, options and accessible labels, rather than only exact button captions. The extension's own setting is called **Hide promotions**. Reused controls are restored when their content changes; containers with unrelated playback controls are preserved.
+## Download the latest build
 
-The extension keeps one presentation controller per page, coalesces relevant DOM changes, batches artwork reads/writes and skips layout scans for unchanged settings, focus/progress changes and opacity-only fades. Audio configuration and hardware band mappings are cached, unchanged EQ settings perform no repeated hardware writes, playback/metadata use callbacks, closed dialogs release their views, and lyrics keep 250 ms updates while idle work drops to once per second. Existing lyrics, artwork blur, motion, sleep timer, recognized-ad muting and Spotify-session EQ/boost remain available. Your saved settings are retained by a same-key update.
+**[Latest release: Spotify+ TV 1.3.0.2](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/latest)** · Built 27 October 2026
 
-Version 0.4 adds **Spotify-session EQ and volume boost**, keeps the original artwork-driven appearance with optional blur and accent colors, hides the visible Upgrade button by default, and simplifies the native TV interface. See [audio setup](AUDIO.md). The audio engine never attaches to the shared output mix. A one-time ADB diagnostic permission is required on this inspected Android 10 TV to identify only the current Spotify process's active audio sessions. New installs leave EQ/boost off; updates retain your settings.
+- [Download the signed Android TV APK](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.2/SpotifyPlus-TV-1.3.0.2.apk)
+- [Download the Windows installer ZIP](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.2/SpotifyPlus-TV-1.3.0.2-Windows-Installer.zip)
+- [SHA-256 checksums](https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v1.3.0.2/SHA256SUMS.txt)
 
-Spicetify CLI (https://github.com/spicetify/cli) inspired the CSS/presentation approach. It targets desktop clients. No Spicetify source, extension, ad blocker or asset is copied or bundled. This extension does not include an ad SDK, DNS/VPN service, or WebView network-request blocker. Its WebView changes affect presentation; native recognized ad breaks can be muted, and their duration still passes.
+This is an unofficial build for the inspected **ARMv7 Android TV** installation of Spotify TV 1.134.2 (`com.spotify.tv.android`). The APK combines the ARMv7, English and TV-density splits into one installable file; it is not universal across TV architectures. The Windows package installs the app on your TV through ADB; it is not a Windows Spotify app.
 
-The injected Java runtime and original JavaScript remain MIT licensed under LICENSE. The separate Kotlin ReVanced host module uses GPL-3.0-only under revanced/COPYING; its host dependencies are not injected into Spotify.
+## Install or update from Windows
 
-Version 0.3 adds **detected-ad muting, enabled by default**, and a modular Kotlin ReVanced patch bundle. Muting observes the native `is_ad_playing` signal and changes Spotify's player-local volume. It remembers requested volume and restores it when the break ends, the setting is disabled, or the signal becomes stale after three minutes. It does not skip ad time, remove ads from the stream, or change subscription status. If player volume has not been observed, it does not guess a volume. Use **Mute detected ads** in the native settings menu to turn it off.
+1. Download and extract the entire Windows installer ZIP.
+2. Enable debugging on the TV and connect the PC and TV to the same network.
+3. Double-click **Install-Spotify.cmd**. Enter the TV IP address when prompted and accept the TV debugging authorization.
+4. The installer checks the APK checksum, updates Spotify, grants the audio diagnostic permission, launches the app and starts the embedded Hush helper.
 
-See [modular patching](revanced/README.md) for patch types, fingerprints, dependencies, extensions, and license boundaries. The old `patch.py` is a legacy 0.2 path and does not install ad muting; use `build.ps1` for 0.3.
+The package includes the signed APK and official Android platform-tools. No Java installation, private signing key or administrator access is required. Updates use `adb install -r` without uninstalling Spotify or clearing app data. Updating an existing installation requires a matching signing certificate; if Android rejects the update, keep the existing app and inspect the error before taking further action.
 
-This is an actual extension injected into the user's Spotify Android TV **1.134.2** installation (`com.spotify.tv.android`), rather than the separate Aurora companion. It is version-specific and intended for personal testing on the inspected Android 10 TV.
-
-## Included
-
-- An in-app native TV settings panel opened with **Menu**, **F1**, or **hold OK/Select and release**.
-- Spotify original colors or Aurora/Midnight/Ember accents, following existing focus styles and artwork-derived page colors.
-- Optional blur/blending of fullscreen background artwork and decorative images, preserving text, controls and foreground album covers. Where appropriate, a backdrop uses artwork already loaded by the page. Motion has an on/off control and respects reduced-motion preferences.
-- Upgrade-button presentation filtering, enabled by default; this does not grant subscription features or remove the ad-break timeline.
-- Five EQ controls and 0 to +6 dB LoudnessEnhancer boost, attached only to this process's verified positive audio sessions. See AUDIO.md.
-- A sleep timer (15/30/60 minutes/cancel), using the current Spotify process's **own Android media-session token** and `MediaController.TransportControls.pause()`.
-- A native line-synchronized lyrics overlay for **your own or licensed local LRC files**, with a Play/Pause button targeting the same Spotify session. Timing reads the native media session and interpolates progress.
-- Optional **Fetch from LRCLIB** lookup for the current track, timed lyrics when available, and a scrollable plain-lyrics fallback. Lookups are manual, use HTTPS and send only track title, artist, album and duration to `lrclib.net`.
-- Lyrics text sizes of 24/30/36 sp and a persistent timing correction from −1000 to +1000 ms. Positive timing advances the highlighted line.
-- Larger existing TV lyric text where Spotify's own web UI uses compatible lyric markers.
-
-The patch keeps Spotify's login, audio engine, entitlements and DRM. It adds no streaming implementation, private Spotify API requests, premium bypass or token harvesting. No developer Client ID is needed: use Spotify's normal TV login. LRCLIB is an optional external service; its lyrics remain subject to rightsholders' rights and provider availability.
-
-## What is not ported
-
-This is a first TV-specific subset, **not the full mobile SpotifyPlus module**. It does not supply a commercial lyrics catalog, word-by-word vocals, translations, animated album-art catalog, Last.fm integration, persistent private-session enforcement, restored mobile Like button, or modified queue/history behavior. Original playback and queue features remain Spotify's own. Local LRC synchronization is line-level and depends on the metadata/progress Spotify exposes to its media session.
-
-## On the TV
-
-Open **Spotify+ TV**, sign in through Spotify, then press Menu or hold OK and release. Short OK presses are forwarded as a balanced down/up pair to the original app. Use D-pad and OK to choose settings; Back closes a dialog. Themes and motion settings persist; the sleep timer is process-local and does not survive a Spotify process restart. Keep Spotify running until it expires.
-
-This installation required replacing the signed official package. Its previous local sign-in was not preserved. Signing in again is expected. Future Play Store updates cannot normally update this build because the certificate differs; restoring the official client also requires reinstalling it. The Play Store/native platform can reject a modified build or limit certificate-bound features such as Cast; those are not bypassed here.
-
-## Import local lyrics
-
-Open **Lyrics · local / LRCLIB** from the injected menu. Press **Fetch from LRCLIB** to request lyrics for the current song. Timed results use the existing playback clock; if only plain lyrics are available, choose **Plain lyrics** and use Up/Down to scroll, Back to close. Valid local LRC files take priority. A request cooldown and overall timeout prevent repeated or indefinitely pending lookups. No lookup happens automatically on track changes.
-
-Only the most recent 12 fetched records are kept in process memory. They disappear when Spotify's process exits. No Spotify token or account identifier is sent to LRCLIB. See [lyrics behavior and handoff notes](LYRICS.md).
-
-Start the desired song, open **Lyrics · local / LRCLIB**, and note the exact filename shown when no local lyrics are loaded. Usually it is the Spotify track's 22-character ID plus `.lrc`; if no ID is exposed, the overlay shows a `track-...lrc` fallback derived from title and artist.
-
-Create a UTF-8 `.lrc` using words you have permission to use:
-
-```lrc
-[offset:0]
-[00:00.00]The room is still
-[00:05.00]The night unfolds
-[00:10.00]A little light to lead us home
-```
-
-With ADB authorized:
+For manual installation with an authorized ADB connection:
 
 ```powershell
-python import_lyrics.py "C:\My Lyrics\song.lrc" --name EXACT_FILENAME.lrc --serial TV_IP:5555 --adb "C:\platform-tools\adb.exe"
+adb -s TV_IP:5555 install -r SpotifyPlus-TV-1.3.0.2.apk
+adb -s TV_IP:5555 shell pm grant com.spotify.tv.android android.permission.DUMP
+adb -s TV_IP:5555 shell am start -W -n com.spotify.tv.android/.SpotifyTVActivity
 ```
 
-The helper writes atomically into the app-private `files/sptv-lyrics` directory using debug `run-as`. It does not write to shared TV storage or read login data. This personal build is deliberately debuggable to support this import; disable TV debugging when not in use and authorize only trusted PCs.
+Run `start-hush.ps1` from the extracted installer with `-Serial TV_IP:5555 -Adb .\tools\platform-tools\adb.exe` to start the helper after manual installation or a TV reboot. Hush is opt-in; enable it in Spotify's settings.
 
-## Package and restore
+## Features in 1.3.0.2
 
-The `.apks` download is a ZIP containing **four APKs**: patched base, ARMv7 native-library split, English split, and TV-density split. It is specific to the installation that was inspected. Do not install only the base APK or mix differently signed splits. It is not a universal standalone APK for other devices.
+- **Native settings:** appearance, artwork blur, motion, promotion hiding, player-local ad muting, Hush, EQ, lyrics and sleep timer. The existing Spotify rows stay in place. Menu/F1 or hold OK opens Spotify’s own Settings screen.
+- **Graphic EQ:** dark rounded panel, blue vertical controls and connected curve inspired by the supplied reference. Ten frequency points from 31 Hz to 16 kHz map logarithmically onto the output’s available hardware bands. EQ stays ±6 dB; post-gain stays 0–6 dB. Existing five-band settings migrate once. Left/Right selects, Up/Down adjusts, OK moves to post-gain and then toolbar, Back closes.
+- **Integrated Hush:** the helper code ships inside Spotify’s APK. An authorized ADB setup starts a shell-owned helper process, which can survive Spotify’s force-stop and relaunch it. No companion app or Shizuku installation is required. Hush is opt-in; helper setup is required after a TV reboot or APK update. See [HUSH.md](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.2/HUSH.md).
+- **Existing features:** Spotify-only audio effects, local/LRCLIB lyrics, Aurora/Midnight/Ember appearance, artwork blur, motion, promotion hiding and sleep timer. The timer survives Spotify process restarts and clears on a TV reboot.
 
-Extract and install all four with Platform Tools:
+## Build from source
+
+The rebuilt **single APK** is labeled `1.3.0.2`. It retains Android versionCode `2340200` from the inspected client. This is a personal extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
+
+The source matching this release is available at **[tag v1.3.0.2](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.2)** and on `feat/hush-tv`. The default branch has not yet merged the feature implementation. To obtain the matching source and pinned helper:
 
 ```powershell
-adb install-multiple -r base.apk split_config.armeabi_v7a.apk split_config.en.apk split_config.tvdpi.apk
+git clone --branch v1.3.0.2 --recurse-submodules https://github.com/AlphadogRSA/spotifyplus-tv-patch.git
 ```
 
-For a first install over the official package, Android's signing rules require removing that package first. **Uninstalling clears local login/settings.** To restore the official client, uninstall the patched package and install Spotify again from the TV's store, or extract the separately saved original-installation backup ZIP and install its four original APKs together. That backup contains installation files, not the previous account session.
+`rebuild_release.py` verifies the exact previous v0.5 installation archive, replaces only the extension definitions/assets, adds the guarded embedded helper provider, updates the version name and merges the split resources/libraries. It produces an **unsigned APK**, which must be signed with the existing retained key to update your installed app. The original key is not stored here. Use `sign-apk.ps1`; do not uninstall or clear data to work around a mismatched key.
 
-## Rebuild the patch
+The local build passed APK v1/v2/v3 signature verification, prior-certificate matching, alignment, package/version checks, runtime/helper tests, Windows PowerShell payload validation, bundled ADB execution and archive/hash verification. The separate Gradle fingerprint check could not start locally because Java could not establish a loopback connection. Actual TV installation, D-pad behavior, Hush behavior, recovery/queue behavior and audio output still need device verification for this release. Earlier 0.5 device observations are documented separately in [VERIFICATION.md](VERIFICATION.md).
 
-The checked Windows build entrypoint is `build.ps1`. It checks all four input APK hashes, compiles the Java extension, runs D8, invokes the version-pinned patcher, aligns and signs each APK, and verifies the signatures. It requires a new output directory and makes no TV changes:
+The original four-APK source build is also supported by `build.ps1` with your own original inputs and key. `install.ps1` installs that set, grants the existing audio diagnostic permission, launches Spotify and starts the embedded helper. For a signed single APK use `adb install -r`, grant `android.permission.DUMP`, launch Spotify, then run `start-hush.ps1`.
 
-```powershell
-$env:SPTV_STORE_PASSWORD = 'YOUR_KEYSTORE_PASSWORD'
-# Set SPTV_KEY_PASSWORD too if the key password differs.
-.\build.ps1 -OriginalDirectory C:\private\original-apks -AndroidSdk C:\Android\sdk -JavaHome C:\Java\jdk-17 -KeyStore C:\private\signing.keystore -KeyAlias YOUR_ALIAS -OutputDirectory C:\builds\sptv-04
-```
+The Windows release ZIP includes the signed APK and official ADB platform-tools. Extract it and run `Install-Spotify.cmd`; Java and a local signing key are not required. It verifies the APK checksum and updates without uninstalling or clearing app data.
 
-Keep your signing key private and out of GitHub. The existing personal build's key was retained locally, and is not in this repository. A new signing key requires reinstalling the package and signing into Spotify again.
+## Source and attribution
 
-Inputs: original four APKs from your own TV, JDK 17, Android SDK Platform 35/Build Tools 35.0.0, Python 3.10+, and [Apktool 2.11.1](https://github.com/iBotPeaches/Apktool/releases/tag/v2.11.1). No proprietary original APK is included in this source ZIP. The original backup and patched installation set are separate personal deliverables; do not publish them as MIT software.
+Original UI, lyrics and audio implementation is MIT licensed. The helper sources/adaptations from [coldMEW/Hush](https://github.com/coldMEW/Hush), pinned to `4e9ded397338de5c69b1784c636feb3d34a8de01`, are GPL-3.0 and embedded with their full license/source notice. The ReVanced build host retains its GPL license. Clone with `--recurse-submodules` to obtain the pinned helper source. None of these licenses relicense Spotify’s proprietary code, assets or recordings.
 
-1. Compile `src/dev/aurora/tvpatch/*.java` with `javac -encoding UTF-8 -source 8 -target 8 -cp ANDROID_SDK/platforms/android-35/android.jar -d classes`.
-2. Package these classes with `jar cf extension.jar -C classes .` and run SDK D8 with `--min-api 26 --lib android.jar --output dex extension.jar`.
-3. Run `python patch.py --base ORIGINAL/base.apk --apktool apktool.jar --java PATH_TO_JAVA --work NEW_BUILD_DIRECTORY --dex dex/classes.dex --framework FRAMEWORK_CACHE_DIRECTORY`.
-4. The script verifies the inspected base APK SHA-256, decodes it, inserts five version-specific hook locations, adds the extension dex and assets, and rebuilds an unsigned APK. Mismatched original inputs are rejected. `--work` must be new; nothing is recursively overwritten.
-5. Zip-align the modified base and all original splits (`zipalign -P 16 -f 4`), then sign **all four with the same personal key** using `apksigner`. Verify every APK before installing. Retain that key privately if you want to update your patched installation without uninstalling it.
-
-Local parser/timing tests:
-
-```powershell
-javac -encoding UTF-8 -d test-classes src/dev/aurora/tvpatch/Lyrics.java tests/LyricsTest.java
-java -ea -cp test-classes LyricsTest
-```
-
-Provider parser/query tests are in `tests/ProviderTest.java`; they use JSON-java 20240303 as a **test-only** dependency. The runtime uses Android's built-in JSON implementation. `.github/workflows/test.yml` downloads the test JAR from Maven Central, verifies its SHA-256, then runs both deterministic test programs. `ProviderLiveTest` is an optional online smoke test and is excluded from normal CI.
-
-## Privacy and licensing
-
-The extension's only added network operation is a user-initiated HTTPS lookup to LRCLIB with song metadata. It does not read OAuth/session secrets. Spotify's original networking/analytics remain those of the original application. Local preferences and imported LRC files remain app-private. Fetched records are held in bounded process memory. Clearing app data or uninstalling removes local files/settings. The own-session token stays in process memory and is never exported or printed. Extension diagnostic logs contain only attach/capture state and its own CSS result, not account data or lyric text.
-
-The original extension source is MIT licensed. It is inspired by [LeNerd46/SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus), MIT, © 2025 Devon Shoutz; the notice is preserved in `assets/SPOTIFYPLUS-LICENSE.txt`. No upstream fonts, artwork, commercial lyrics, or mobile hook implementation are bundled. Spotify's app, native libraries, artwork and branding retain their own rights. The MIT license applies only to the extension's original source, not the patched proprietary application.
-
-The lyrics update is also inspired by [EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated). Eevee is GPL-3.0 licensed and targets iOS. No Eevee source, assets or hooks are incorporated. The LRCLIB client is independently written against [LRCLIB's documented API](https://lrclib.net/docs). See `assets/INSPIRATION.md`.
-
-See VERIFICATION.md for actual checks and outstanding account/playback testing.
+The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotify’s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. Optional manual LRCLIB lookup sends song title, artist, album and duration to that provider; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).
