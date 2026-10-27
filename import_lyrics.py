@@ -1,4 +1,4 @@
-"""Import your own/licensed UTF-8 LRC into the installed personal TV patch."""
+"""Import your own/licensed UTF-8 LRC into the installed TV patch."""
 import argparse
 import pathlib
 import re

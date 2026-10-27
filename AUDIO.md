@@ -4,7 +4,7 @@ Open Menu (or hold OK), then **Audio · Equalizer & Boost**. Effects are off by 
 
 Effects attach only to positive audio session IDs belonging to this Spotify process. There is **no output-mix/session-0 fallback**. They are released when playback pauses, the owning activity is destroyed, or the session disappears. Discovery runs on a background worker, with bounded diagnostics and a timeout. Headroom and effect support depend on the TV/output; this does not replace hardware volume controls or add a streaming engine.
 
-This TV client does not publish its audio session through a public app callback. This Android 10 personal build therefore uses the platform’s diagnostic `media.audio_flinger` track table. After installing the four APKs, perform the one-time development permission setup over authorized ADB:
+This TV client does not publish its audio session through a public app callback. This Android 10 build therefore uses the platform’s diagnostic `media.audio_flinger` track table. After installing the four APKs, perform the one-time development permission setup over authorized ADB:
 
 ```powershell
 adb -s TV_IP:5555 shell pm grant com.spotify.tv.android android.permission.DUMP

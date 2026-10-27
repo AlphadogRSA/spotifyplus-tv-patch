@@ -64,4 +64,4 @@ The patched Spotify TV installation replaced `com.spotify.tv.android` on the con
 - This is a tested experimental subset, not a complete TV port of all mobile SpotifyPlus features. See README.md for explicit omissions.
 - The build is intentionally debuggable to support private LRC import through trusted ADB. It uses a local development signing key. The original app's login was cleared by the necessary uninstall/reinstall.
 
-The TV was left at Spotify's regular login screen after checks. No login secrets were collected. The source ZIP contains only the original extension, patcher, helper, tests and notices; proprietary installation files are separate personal-device deliverables.
+The TV was left at Spotify's regular login screen after checks. No login secrets were collected. The source ZIP contains only the original extension, patcher, helper, tests and notices; proprietary installation files are separate device-specific deliverables.

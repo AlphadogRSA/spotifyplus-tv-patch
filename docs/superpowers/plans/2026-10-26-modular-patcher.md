@@ -6,7 +6,7 @@
 
 **Constraints:** No subscription changes. Preserve current app data by using the same signing key. No proprietary APKs or keys committed to Git. Compatibility metadata remains limited to the inspected package/version until other versions are tested; fingerprints do not imply universal compatibility.
 
-**Accepted additions:** User approved default-on ad muting, then Spotify-style color accents/artwork blur, Upgrade hiding, polished UI, EQ/boost and a private GitHub release. User explicitly rejected shared-output effects. Audio effects therefore attach only to verified positive sessions owned by this process, using a one-time ADB diagnostic permission on the inspected Android 10 TV. The private release contains the personal four-APK installation set; source Git remains free of proprietary APKs and keys.
+**Accepted additions:** User approved default-on ad muting, then Spotify-style color accents/artwork blur, Upgrade hiding, polished UI, EQ/boost and a private GitHub release. User explicitly rejected shared-output effects. Audio effects therefore attach only to verified positive sessions owned by this process, using a one-time ADB diagnostic permission on the inspected Android 10 TV. The private release contains the four-APK installation set; source Git remains free of proprietary APKs and keys.
 
 - [x] Install and verify the current lyrics build on the connected TV.
 - [x] Pin a working official ReVanced Patcher/CLI/compiler combination and record provenance/licenses.
