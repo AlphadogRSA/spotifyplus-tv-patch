@@ -1,3 +1,13 @@
+# 1.3.0.8 Home blur and panel verification - 27 October 2026
+
+- Reproduced the native Home background receiving synthetic clipping/isolation and unrelated fallback artwork. A separate loading/fade test reproduced zero-opacity artwork being treated as absent.
+- Browser regressions pass for native wrapper overflow, sharp image/unchanged geometry, native gradient opacity, isolated halo, duplicate prevention and toggle cleanup. Existing presentation, theme, performance, settings scroll/focus and visible navigation checks passed.
+- Same-key final runtime installed on Xiaomi TV. Native Home image geometry, filter:none, wrapper overflow:visible and header position stayed unchanged after enabling blur; added halo appeared and disabling it removed it cleanly. Original blur preference restored.
+- EQ, main Lyrics, Sleep Timer, Hush Setup and About were opened and closed with real remote input; final screenshots visually inspected for matching navy surfaces, rounded frames and blue controls. Empty Lyrics state is compact and unavailable actions muted.
+- About GitHub QR decoded from the final TV screenshot to https://github.com/AlphadogRSA. Plain-lyrics content was not loaded during this UI-only check.
+- Final APK scripts match source and the native DEX matches the freshly compiled shared-panel runtime. Signatures/certificate, alignment and installer integrity checked. No uninstall or data clearing; other installed apps unchanged. Helper startup requested after update.
+- Audio response, timer expiration and full Hush recovery/queue behavior were not retested. Historical evidence follows.
+
 # 1.3.0.7 visible-navigation verification - 27 October 2026
 
 - Regression fixtures reproduced hidden/transparent/offscreen focus and an unrepaired native Upgrade position, then passed after visibility filtering, endpoint clamping and menu-entry focus repair.

@@ -45,9 +45,10 @@ public final class HushIntegration {
 
     public static void showSetup(Activity a) {
         prepare(a);
-        new AlertDialog.Builder(a).setTitle("Hush · integrated in Spotify")
-                .setMessage(status()+"\n\nNo second app is installed. Enable Hush in Spotify Settings, then run the provided start-hush.ps1 over your authorized ADB connection. Run it again after a TV reboot or APK update.\n\nKeep Mute detected ads enabled as the fallback. TV restart skipping still needs device verification.")
-                .setPositiveButton("OK",null).show();
+        android.widget.LinearLayout body=PanelUi.stack(a);
+        body.addView(PanelUi.text(a,status(),17,PanelUi.BLUE));
+        body.addView(PanelUi.text(a,"No second app is installed. Enable Hush in Spotify Settings, then run start-hush.ps1 over your authorized ADB connection. Run it again after a TV reboot or APK update.\n\nKeep Mute detected ads enabled as the fallback. Full ad recovery still needs playback testing.",15,PanelUi.MUTED));
+        Hooks.trackDialog(PanelUi.dialog(a,"Hush helper setup",body,false));
     }
 
     public static void tick(Context c, MediaController controller, boolean ad, long sleepAt) {

@@ -1,7 +1,7 @@
 param([string]$Serial, [switch]$ValidateOnly)
 $ErrorActionPreference = 'Stop'
-$apk = Join-Path $PSScriptRoot 'SpotifyPlus-TV-1.3.0.7.apk'
-$expectedHash = '86aefed372d86cf8df0944a857e26ec51609b29872d9fc88105f92bf7ee2f95d'
+$apk = Join-Path $PSScriptRoot 'SpotifyPlus-TV-1.3.0.8.apk'
+$expectedHash = '4053b6e2b11a5ce1501a96b534b8c1158f27fe28b7f4df66c184a7284e224be6'
 $hasher = [Security.Cryptography.SHA256]::Create()
 try { $actualHash = [BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($apk))).Replace('-', '').ToLowerInvariant() } finally { $hasher.Dispose() }
 if ($actualHash -ne $expectedHash) { throw 'APK checksum mismatch. Extract the installer ZIP again.' }

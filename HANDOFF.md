@@ -1,4 +1,8 @@
-# Current update: 1.3.0.7
+# Current update: 1.3.0.8
+
+Home blur now adds an isolated halo behind native artwork and never uses page-level/native Home wrappers as a clipped fallback. Loading/fade-in, toggle cleanup and native geometry verified. PanelUi provides the EQ-style navy/blue native frame, buttons and dialogs; settings cards match. Final native panels and QR visually/device tested.
+
+# Previous update: 1.3.0.7
 
 Home navigation now includes only visible eligible controls, clamps at visible endpoints, disables Upgrade for focus/accessibility, and repairs a remembered Upgrade position on menu entry. Verified actual remote traversal and Home activation on the Xiaomi TV.
 

@@ -1,7 +1,7 @@
 function(config) {
   'use strict';
   // Original TV presentation code. Existing artwork only; no media/account requests.
-  var VERSION = 8, ID = 'spotifyplus-tv-style';
+  var VERSION = 9, ID = 'spotifyplus-tv-style';
   var previous = window.__spotifyPlusTV;
   if (previous && previous.version === VERSION) return previous.configure(config);
   if (previous) {
@@ -18,7 +18,7 @@ function(config) {
   var style = document.getElementById(ID);
   if (!style) { style = document.createElement('style'); style.id = ID; (document.head || document.documentElement).appendChild(style); }
   var state = { version: VERSION, hidden: new Set(), images: new Set(), backgrounds: new Set(),
-    roots: new Set(), writes: new WeakMap(), timer: null, artPending: false,
+    roots: new Set(), halos: new Map(), writes: new WeakMap(), timer: null, artPending: false,
     stats: { scans: 0, artworkPasses: 0, layoutReads: 0 } };
   var cfg, key, artKey, destroy = false;
   var ART = 'img,main,section,[style*="background-image"],[class*="background"],[class*="npv-"],[class*="view"],body';
@@ -40,10 +40,11 @@ function(config) {
     if (value) node.style.setProperty('--sptv-art', value); else node.style.removeProperty('--sptv-art');
     ownWrite(node, 'style');
   }
-  function summary() { return 'tv-theme=' + cfg.theme + ';blur=' + (state.images.size + state.backgrounds.size) + ';hidden=' + state.hidden.size; }
+  function summary() { return 'tv-theme=' + cfg.theme + ';blur=' + (state.images.size + state.backgrounds.size + state.halos.size) + ';hidden=' + state.hidden.size; }
   function css(c) {
     var accents = [null, '#91e7cf', '#bbb3ff', '#ffbf98', '#70c8ff', '#ff96b7', '#ffd166'], accent = accents[c.theme];
     var sheet = '.sptv-upgrade-hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}'
+      + '.sptv-home-glow{position:fixed;object-fit:cover;filter:blur(38px) brightness(.68);transform:scale(1.10);opacity:.65;pointer-events:none!important;' + (c.motion ? 'animation:sptv-drift 30s ease-in-out infinite alternate' : '') + '}'
       + '.sptv-static{position:relative}.sptv-background{isolation:isolate!important;overflow:hidden!important}'
       + '.sptv-background:before{content:"";position:absolute;inset:-40px;z-index:-1;pointer-events:none;background-image:var(--sptv-art);background-size:cover;background-position:center;filter:blur(32px) brightness(.58);transform:scale(1.08);'
       + (c.motion ? 'animation:sptv-drift 30s ease-in-out infinite alternate;' : '') + '}'
@@ -109,10 +110,21 @@ function(config) {
   function artwork() {
     state.stats.artworkPasses++;
     var nodes = document.querySelectorAll(ART), reads = [], nextImages = new Set(), nextBackgrounds = new Map();
-    var album = '', area = 0, nativeBackdrop = false, backdrop = null;
+    var album = '', area = 0, nativeBackdrop = false, backdrop = null, home = new Map();
+    var nativeRoots=Array.prototype.slice.call(document.querySelectorAll('.background')).filter(function(e){return !!e.querySelector('.background__container .background__image');});
+    nativeBackdrop=nativeRoots.some(function(root){var box=geometry(root);return box.width>0 && box.height>0 && box.bottom>0 && box.top<innerHeight;});
+    Array.prototype.forEach.call(document.querySelectorAll('.background__container .background__image'),function(image){
+      if(image.classList.contains('sptv-home-glow'))return;
+      var box=geometry(image), source=image.currentSrc || image.src, style=getComputedStyle(image);
+      if(source && box.width>0 && box.height>0 && box.bottom>0 && box.top<innerHeight && style.visibility!=='hidden' && (image.classList.contains('background__image--visible') || Number(style.opacity)>0)) {
+        home.set(image,{rect:box,source:source});nativeBackdrop=true;
+      }
+    });
     // Read phase: geometry/computed styles first, no interleaved DOM writes.
     for (var i = 0; i < nodes.length; i++) {
-      var node = nodes[i], rect = geometry(node);
+      var node = nodes[i];
+      if(node.closest('[data-sptv-decoration]') || nativeRoots.some(function(root){return root===node || root.contains(node);}))continue;
+      var rect = geometry(node);
       if (!rect.width || !rect.height || rect.bottom < 0 || rect.right < 0 || rect.top > innerHeight || rect.left > innerWidth) continue;
       var info = { node: node, rect: rect, style: getComputedStyle(node) }; reads.push(info);
       if (node.tagName !== 'IMG') continue;
@@ -126,13 +138,24 @@ function(config) {
     }
     for (var j = 0; j < reads.length; j++) {
       var item = reads[j], el = item.node, box = item.rect, computed = item.style;
-      if (el.tagName === 'IMG' || el.matches(CONTROL) || box.width < innerWidth * .6 || box.height < innerHeight * .25) continue;
+      if (/^(HTML|BODY)$/.test(el.tagName) || el.id==='root' || el.matches('.layer,.with-nowrap,.content-section,.background-container,.background-container__solid-color,[data-testid="root"]') || el.tagName === 'IMG' || el.matches(CONTROL) || box.width < innerWidth * .6 || box.height < innerHeight * .25) continue;
       var image = el.style.backgroundImage || computed.backgroundImage;
       if (image && image.indexOf('url(') >= 0) nextBackgrounds.set(el, { image: image, relative: computed.position === 'static' || el.classList.contains('sptv-static') });
       var color = computed.backgroundColor.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/);
       if (!nativeBackdrop && album && box.width >= innerWidth * .8 && box.height >= innerHeight * .8 && color && (color[4] === undefined || Number(color[4]) > .95) && Math.max(+color[1], +color[2], +color[3]) < 70) backdrop = item;
     }
     if (backdrop && album) nextBackgrounds.set(backdrop.node, { image: album, relative: backdrop.style.position === 'static' || backdrop.node.classList.contains('sptv-static') });
+    state.halos.forEach(function(glow,image){if(!home.has(image)){glow.remove();state.halos.delete(image);}});
+    home.forEach(function(value,image){
+      var glow=state.halos.get(image);
+      if(!glow) {
+        glow=document.createElement('img');glow.className='sptv-home-glow';glow.alt='';glow.setAttribute('aria-hidden','true');glow.setAttribute('data-sptv-decoration','true');
+        image.parentElement.insertBefore(glow,image);state.halos.set(image,glow);
+      }
+      if(glow.getAttribute('src')!==value.source)glow.setAttribute('src',value.source);
+      var box=value.rect;
+      [['left',box.left],['top',box.top],['width',box.width],['height',box.height]].forEach(function(pair){var value=pair[1]+'px';if(glow.style[pair[0]]!==value)glow.style[pair[0]]=value;});
+    });
     // Write phase: only changed classes/properties; removed/reused art is restored.
     state.images.forEach(function(el) { if (!nextImages.has(el)) classToggle(el, 'sptv-art-blur', false); });
     nextImages.forEach(function(el) { classToggle(el, 'sptv-art-blur', true); });
@@ -145,6 +168,7 @@ function(config) {
     state.images = nextImages; state.backgrounds = new Set(nextBackgrounds.keys());
   }
   function clearArt() {
+    state.halos.forEach(function(glow){glow.remove();});state.halos.clear();
     state.images.forEach(function(el) { classToggle(el, 'sptv-art-blur', false); });
     state.backgrounds.forEach(function(el) { classToggle(el, 'sptv-background', false); classToggle(el, 'sptv-static', false); artworkProperty(el, ''); });
     state.images.clear(); state.backgrounds.clear();
@@ -174,12 +198,12 @@ function(config) {
     if (state.timer === null && !document.hidden) state.timer = setTimeout(flush, 150);
   }
   function relevantArt(node) {
-    return node && node.nodeType === 1 && (node.matches(ART) || !!node.querySelector('img,[style*="background-image"]'));
+    return node && node.nodeType === 1 && !node.matches('[data-sptv-decoration]') && (node.matches(ART) || !!node.querySelector('img,[style*="background-image"]'));
   }
   state.observer = new MutationObserver(function(records) {
     for (var i = 0; i < records.length; i++) {
       var record = records[i], node = record.target.nodeType === 1 ? record.target : record.target.parentElement;
-      if (!node || node.closest('style,script,noscript,template')) continue;
+      if (!node || node.closest('style,script,noscript,template,[data-sptv-decoration]')) continue;
       if (record.type === 'attributes') {
         var attr = record.attributeName, snapshot = state.writes.get(node);
         if (snapshot && Object.prototype.hasOwnProperty.call(snapshot, attr) && node.getAttribute(attr) === snapshot[attr]) continue;

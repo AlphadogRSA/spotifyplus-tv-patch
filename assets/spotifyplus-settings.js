@@ -15,12 +15,12 @@ function(config) {
   style.textContent = '.sptv-settings-host{max-height:calc(100vh - 20rem);overflow-y:auto;overscroll-behavior:contain;padding-right:1rem;scrollbar-width:thin}' +
     '.menu--focused .sptv-nav-focus{outline:.4rem solid var(--sptv-accent,#1ed760);outline-offset:.5rem}' +
     '#sptv-native-settings{color:inherit;font:inherit;padding-bottom:3rem}' +
-    '#sptv-native-settings h2{font:inherit;font-weight:700;margin:3rem 0 2rem}' +
-    '#sptv-native-settings .profile-menu-item{min-height:8rem;box-sizing:border-box}' +
-    '#sptv-native-settings button{display:block;width:100%;background:transparent;color:inherit;border:0;text-align:left;font:inherit;padding:1rem;border-radius:.5rem}' +
+    '#sptv-native-settings h2{font:inherit;font-size:2.8rem;font-weight:700;color:#659efa;margin:2rem 0 1.5rem}' +
+    '#sptv-native-settings .profile-menu-item{min-height:9rem;box-sizing:border-box;margin:.8rem 0;border:1px solid #2c3b4b;border-radius:1.5rem;background:#0c1117}' +
+    '#sptv-native-settings button{display:block;width:100%;background:transparent;color:inherit;border:0;text-align:left;font:inherit;font-size:2.75rem;font-weight:600;padding:1.5rem 2rem;border-radius:1.5rem}' +
     '.sptv-settings-host.sptv-dom-navigation .list-button--focused:not(:focus),.sptv-settings-host.sptv-settings-suspended .list-button--focused{box-shadow:none!important}' +
-    '.sptv-settings-host button:focus{outline:.4rem solid var(--sptv-settings-accent,#1ed760);outline-offset:.5rem}' +
-    '#sptv-native-settings .profile-menu-item__subtitle{font-size:.75em;opacity:.7;margin-top:1rem}';
+    '.sptv-settings-host button:focus{outline:.3rem solid #659efa;outline-offset:0;background:#1a2e46}' +
+    '#sptv-native-settings .profile-menu-item__subtitle{font-size:1.9rem;font-weight:400;color:#aebac4;opacity:1;margin:.65rem 0 0}';
   (document.head || document.documentElement).appendChild(style);
   function invoke(action) {
     if (window.SpotifyPlusSettings && window.SpotifyPlusSettings.action) window.SpotifyPlusSettings.action(action);

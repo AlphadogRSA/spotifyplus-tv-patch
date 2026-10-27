@@ -71,7 +71,7 @@ public final class Hooks {
     private static boolean longSelect;
     private static boolean forwardingKey;
     private static boolean replayingNavigation;
-    private static final String VERSION = "1.3.0.7";
+    private static final String VERSION = "1.3.0.8";
     private static KeyEvent selectDown;
     private static final AdMuteState AD_MUTE = new AdMuteState();
     private static volatile WeakReference<Object> volumeBridge = new WeakReference<>(null);
@@ -193,7 +193,7 @@ public final class Hooks {
     private static void setTextChanged(TextView view, CharSequence text) {
         if (view != null && !android.text.TextUtils.equals(view.getText(), text)) view.setText(text);
     }
-    private static AlertDialog trackDialog(AlertDialog dialog) {
+    static AlertDialog trackDialog(AlertDialog dialog) {
         dialogs.add(dialog);
         dialog.setOnDismissListener(ignored -> {
             dialogs.remove(dialog);
@@ -347,37 +347,16 @@ public final class Hooks {
         view.setPadding(16, 8, 16, 8);
         return view;
     }
-    private static Button button(Activity a, String label, Runnable action) {
-        Button view = new Button(a);
-        view.setText(label); view.setTextSize(16); view.setAllCaps(false); view.setTextColor(Color.WHITE);
-        view.setPadding(18, 8, 18, 8);
-        GradientDrawable base = new GradientDrawable(); base.setColor(0xff242424); base.setCornerRadius(16);
-        view.setBackground(base);
-        view.setOnFocusChangeListener((v, focused) -> {
-            GradientDrawable bg = new GradientDrawable(); bg.setColor(focused ? accent(a) : 0xff242424); bg.setCornerRadius(16);
-            v.setBackground(bg); ((Button) v).setTextColor(focused ? 0xff07111b : Color.WHITE);
-        });
-        view.setOnClickListener(v -> action.run());
-        return view;
-    }
+    private static Button button(Activity a,String label,Runnable action) {return PanelUi.button(a,label,action);}
     private static int accent(Context context) {
         return new int[]{0xff1ed760, MINT, 0xffbbb3ff, 0xffffbf98, 0xff70c8ff, 0xffff96b7, 0xffffd166}[Math.floorMod(prefs(context).getInt("theme", 1), 7)];
     }
-    private static LinearLayout panel(Activity a) {
-        LinearLayout panel = new LinearLayout(a); panel.setOrientation(LinearLayout.VERTICAL); panel.setPadding(24, 20, 24, 20);
-        panel.setBackgroundColor(0xff121212);
-        return panel;
-    }
+    private static LinearLayout panel(Activity a) {return PanelUi.panel(a);}
     private static void add(LinearLayout panel, View view) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(0, 5, 0, 5); panel.addView(view, lp);
     }
-    private static AlertDialog show(Activity a, View content) {
-        AlertDialog dialog = trackDialog(new AlertDialog.Builder(a).setView(content).create());
-        dialog.show(); Window window = dialog.getWindow();
-        if (window != null) { window.setBackgroundDrawableResource(android.R.color.transparent); window.setLayout((int)(a.getResources().getDisplayMetrics().widthPixels * .82), -2); }
-        return dialog;
-    }
+    private static AlertDialog show(Activity a,View content) {return trackDialog(PanelUi.show(a,content,.86f,0));}
     public static void showMenu(Activity a) {
         WebView view = web.get();
         if (view != null) NativeSettings.open(view);
@@ -417,8 +396,8 @@ public final class Hooks {
         reapply();
     }
     private static void showAbout(Activity a) {
-        LinearLayout content=panel(a);
-        TextView developer=new TextView(a);developer.setTextColor(Color.WHITE);developer.setTextSize(22);
+        LinearLayout content=PanelUi.stack(a);
+        TextView developer=new TextView(a);developer.setTextColor(Color.WHITE);developer.setBackgroundColor(Color.TRANSPARENT);developer.setTextSize(18);
         developer.setText("Developer: Tumelo Rathebe / AlphadogRSA\nhttps://github.com/AlphadogRSA\n\nScan to visit the developer's GitHub.");add(content,developer);
         android.widget.ImageView qr=new android.widget.ImageView(a);
         try(InputStream input=a.getAssets().open("developer-github-qr.png")) {
@@ -426,23 +405,27 @@ public final class Hooks {
         } catch(Exception error) { Log.w("SPTV","Developer QR asset unavailable"); }
         qr.setContentDescription("QR code linking to https://github.com/AlphadogRSA");
         qr.setBackgroundColor(Color.WHITE);
-        int size=(int)(220*a.getResources().getDisplayMetrics().density);
+        int size=(int)(196*a.getResources().getDisplayMetrics().density);
         LinearLayout.LayoutParams imageParams=new LinearLayout.LayoutParams(size,size);imageParams.gravity=android.view.Gravity.CENTER_HORIZONTAL;imageParams.setMargins(0,16,0,16);
         content.addView(qr,imageParams);
-        TextView credits=new TextView(a);credits.setTextColor(Color.WHITE);credits.setTextSize(16);
+        TextView credits=new TextView(a);credits.setTextColor(Color.WHITE);credits.setBackgroundColor(Color.TRANSPARENT);credits.setTextSize(16);
         credits.setText("Open-source TV extension: MIT. Embedded Hush helper adapted from coldMEW/Hush 2.0.2 (GPL-3.0). Full developer credits and license notices are in the GitHub project. Spotify retains its own account and streaming behavior.");add(content,credits);
-        ScrollView scroll=new ScrollView(a);scroll.addView(content);
-        trackDialog(new AlertDialog.Builder(a).setTitle("Spotify+ TV - "+VERSION).setView(scroll).setPositiveButton("Close",null).create()).show();
+        ScrollView scroll=new ScrollView(a);scroll.setBackgroundColor(Color.TRANSPARENT);scroll.addView(content);scroll.setFocusable(true);scroll.setFocusableInTouchMode(true);
+        trackDialog(PanelUi.dialog(a,"About Spotify+ TV - "+VERSION,scroll,true));
     }
     private static void showSleep(Activity a) {
-        trackDialog(new AlertDialog.Builder(a).setTitle("Sleep timer")
-            .setItems(new String[]{"15 minutes", "30 minutes", "60 minutes", "Cancel timer"}, (dialog, which) -> {
-                sleepAt = which == 3 ? 0 : System.currentTimeMillis() + new long[]{900000,1800000,3600000}[which];
-                int boot = android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
-                prefs(a).edit().putLong("sleepAt", sleepAt).putInt("sleepBoot", boot).apply();
-                WebView view = web.get(); if (view != null) NativeSettings.refresh(view, true);
-                toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. It survives Spotify restarts.");
-            }).create()).show();
+        LinearLayout body=PanelUi.stack(a);add(body,PanelUi.text(a,sleepAt>0?"Timer active":"Timer off",15,PanelUi.BLUE));
+        add(body,PanelUi.text(a,"Pause Spotify after the selected time. The timer survives app restarts and clears after a TV reboot.",14,PanelUi.MUTED));
+        final AlertDialog[] owner=new AlertDialog[1];String[] labels={"15 minutes","30 minutes","60 minutes","Cancel timer"};
+        for(int i=0;i<labels.length;i++){final int which=i;add(body,button(a,labels[i],()->{setSleep(a,which);if(owner[0]!=null)owner[0].dismiss();}));}
+        owner[0]=trackDialog(PanelUi.dialog(a,"Sleep timer",body,false));
+    }
+    private static void setSleep(Activity a,int which) {
+        sleepAt=which==3?0:System.currentTimeMillis()+new long[]{900000,1800000,3600000}[which];
+        int boot=android.provider.Settings.Global.getInt(a.getContentResolver(),android.provider.Settings.Global.BOOT_COUNT,-1);
+        prefs(a).edit().putLong("sleepAt",sleepAt).putInt("sleepBoot",boot).apply();
+        WebView view=web.get();if(view!=null)NativeSettings.refresh(view,true);
+        toast(which==3?"Sleep timer cancelled":"Sleep timer set. It survives Spotify restarts.");
     }
 
     private static void showAudio(Activity a) {
@@ -452,7 +435,7 @@ public final class Hooks {
         body.setPadding(24, 16, 24, 16);
         body.setBackgroundColor(0xff0c1117);
         LinearLayout toolbar = new LinearLayout(a);
-        toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);toolbar.setBackgroundColor(Color.TRANSPARENT);
         TextView heading = text(a, "Equalizer · Graphic EQ", 23, Color.WHITE);
         toolbar.addView(heading, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         GraphicEqView chart = new GraphicEqView(a, p);
@@ -492,7 +475,9 @@ public final class Hooks {
     }
     private static void showLyrics(Activity a) {
         LinearLayout body = panel(a);
-        lyricTitle = text(a, "Lyrics", 25, accent(a)); lyricTitle.setMaxLines(1); add(body, lyricTitle);
+        LinearLayout toolbar=new LinearLayout(a);toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);toolbar.setBackgroundColor(Color.TRANSPARENT);
+        toolbar.addView(text(a,"Lyrics",22,Color.WHITE),new LinearLayout.LayoutParams(0,-2,1));toolbar.addView(button(a,"Close",()->{if(lyricDialog!=null)lyricDialog.dismiss();}));add(body,toolbar);
+        lyricTitle = text(a, "Lyrics", 20, PanelUi.BLUE); lyricTitle.setMaxLines(1); add(body, lyricTitle);
         for (int i = 0; i < 3; i++) { lyricRows[i] = text(a, "", i == 1 ? 30 : 20, i == 1 ? Color.WHITE : 0xff8999a8); lyricRows[i].setMinLines(1); add(body, lyricRows[i]); }
         lyricStatus = text(a, "", 12, 0xffb9c7d0); lyricStatus.setMaxLines(2); add(body, lyricStatus);
         LinearLayout controls = new LinearLayout(a);
@@ -523,7 +508,6 @@ public final class Hooks {
             int next = current == 0 ? 500 : current == 500 ? 1000 : current == 1000 ? -1000 : current == -1000 ? -500 : 0;
             p.edit().putInt("lyricOffset", next).apply(); offset.setText("Timing: " + next + " ms");
         }); options.addView(offset);
-        options.addView(button(a, "Close lyrics", () -> lyricDialog.dismiss()));
         add(body, options);
         add(body, text(a, "Fetch shares song metadata with lrclib.net. Valid local LRC files take priority. Positive timing advances lyrics.", 11, 0xffb9c7d0));
         lyricDialog = show(a, body); play.requestFocus(); updateLyrics();
@@ -569,16 +553,17 @@ public final class Hooks {
     }
     private static void showPlainLyrics(Activity a) {
         if (plainLyrics.isEmpty()) return;
-        ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(0xff10212c);
+        ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(PanelUi.BACKGROUND);
         TextView content = text(a, plainLyrics + "\n\nLyrics from LRCLIB · Back to close", 24, Color.WHITE);
         scroll.addView(content); scroll.setFocusableInTouchMode(true);
         scroll.setOnKeyListener((v, key, event) -> {
             if (key != KeyEvent.KEYCODE_DPAD_UP && key != KeyEvent.KEYCODE_DPAD_DOWN) return false;
+            if (key == KeyEvent.KEYCODE_DPAD_UP && scroll.getScrollY()==0) return false;
             if (event.getAction() == KeyEvent.ACTION_DOWN)
                 scroll.smoothScrollBy(0, (key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1) * Math.max(80, scroll.getHeight() / 3));
             return true;
         });
-        AlertDialog dialog = show(a, scroll);
+        AlertDialog dialog = trackDialog(PanelUi.dialog(a,"Plain lyrics",scroll,true));
         dialog.getWindow().setLayout((int)(a.getResources().getDisplayMetrics().widthPixels * .82), (int)(a.getResources().getDisplayMetrics().heightPixels * .8));
         scroll.requestFocus();
     }
@@ -607,6 +592,7 @@ public final class Hooks {
         int current = Lyrics.active(lines, Math.max(0, position + settings.getInt("lyricOffset", 0)));
         String[] plain = plainLyrics.isEmpty() ? new String[0] : plainLyrics.split("\\r?\\n");
         for (int i = 0; i < 3; i++) {
+            lyricRows[i].setVisibility(lines.isEmpty() && plain.length==0 ? View.GONE : View.VISIBLE);
             int index = current + i - 1;
             int size = i == 1 ? settings.getInt("lyricSize", 30) : Math.max(16, settings.getInt("lyricSize", 30) - 10);
             float pixels = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, size, a.getResources().getDisplayMetrics());
