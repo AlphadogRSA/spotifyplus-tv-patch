@@ -3,25 +3,17 @@ $ErrorActionPreference = 'Stop'
 $expectedCert = '1ff3a55d2b53b7f232d47584eed11ed4445d0eba6c735212d071e62734fc57a1'
 $apk = Join-Path $PSScriptRoot 'SpotifyPlus-TV-1.3.0.1-unsigned.apk'
 if ((Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLower() -ne '202c36000fb1579e3020ffb82ff86155bc8fe0cab508da5b07c0088fdb66c1f5') { throw 'APK checksum mismatch. Download and extract the package again.' }
-$java = $null
-if ($env:JAVA_HOME) {
-    $candidate = Join-Path $env:JAVA_HOME 'bin/java.exe'
-    if (Test-Path -LiteralPath $candidate) { $java = $candidate }
+# Use the bundled portable runtime. No Java installation, PATH edits or admin rights needed.
+$javaArchive = Join-Path $PSScriptRoot 'tools/java17-windows-x64.zip'
+if (-not (Test-Path -LiteralPath $javaArchive)) { throw 'Portable Java archive is missing. Extract the entire new installer ZIP, not just the script.' }
+if ((Get-FileHash -LiteralPath $javaArchive -Algorithm SHA256).Hash.ToLower() -ne '7fe2324cc5901a89aaa0e8dc232075c59f2aca5270c533bdb1b861a5274af834') { throw 'Portable Java checksum mismatch. Download and extract the new installer again.' }
+$javaDirectory = Join-Path $PSScriptRoot 'tools/java17'
+$java = Join-Path $javaDirectory 'jdk-17.0.20+8-jre/bin/java.exe'
+if (-not (Test-Path -LiteralPath $java)) {
+    Write-Host 'Preparing bundled portable Java 17 (first run only)...'
+    Expand-Archive -LiteralPath $javaArchive -DestinationPath $javaDirectory -Force
 }
-if (-not $java) { $command = Get-Command java -ErrorAction SilentlyContinue; if ($command) { $java = $command.Source } }
-if (-not $java) {
-    foreach ($vendor in @('Eclipse Adoptium','Java','Microsoft')) {
-        $vendorPath = Join-Path $env:ProgramFiles $vendor
-        if (Test-Path -LiteralPath $vendorPath) {
-            foreach ($directory in Get-ChildItem -LiteralPath $vendorPath -Directory) {
-                $candidate = Join-Path $directory.FullName 'bin/java.exe'
-                if (Test-Path -LiteralPath $candidate) { $java = $candidate; break }
-            }
-        }
-        if ($java) { break }
-    }
-}
-if (-not $java) { throw 'Java 17 or newer was not found. Use the Java installation from your previous Spotify build, then run this again.' }
+if (-not (Test-Path -LiteralPath $java)) { throw 'Portable Java could not be extracted. Make sure the folder is writable, then run again.' }
 if (-not $KeyStore) {
     $candidates = @((Join-Path $env:USERPROFILE '.android/debug.keystore'))
     if ($env:ANDROID_USER_HOME) { $candidates += Join-Path $env:ANDROID_USER_HOME 'debug.keystore' }
@@ -37,7 +29,7 @@ $classPath = (Join-Path $PSScriptRoot 'tools/SpotifyTvSigner.jar') + ';' + (Join
 $output = Join-Path $PSScriptRoot ('SpotifyPlus-TV-1.3.0.1-signed-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.apk')
 Write-Host 'Checking the signing key against your previous TV build...'
 & $java -cp $classPath SpotifyTvSigner $apk $key $output $expectedCert
-if ($LASTEXITCODE -ne 0) { throw 'Signing stopped. The key may not match, its password may differ, or Java may be older than 17. Nothing was installed or uninstalled. Custom passwords can be supplied locally through SPTV_STORE_PASSWORD and SPTV_KEY_PASSWORD.' }
+if ($LASTEXITCODE -ne 0) { throw 'Signing stopped. The key may not match or its password may differ. Nothing was installed or uninstalled. Custom passwords can be supplied locally through SPTV_STORE_PASSWORD and SPTV_KEY_PASSWORD.' }
 if ($SignOnly) { Write-Host "Installable same-key APK: $output"; exit 0 }
 $adb = $null
 $command = Get-Command adb -ErrorAction SilentlyContinue
