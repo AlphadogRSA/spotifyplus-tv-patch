@@ -1,4 +1,4 @@
-# Spotify+ TV 1.3.0.1
+# Spotify+ TV 1.3.0.2
 
 A personal modification of the inspected Spotify TV 1.134.2 ARMv7 client. **One installed Spotify app**, with the custom controls integrated into Spotify’s existing Settings/profile menu.
 
@@ -9,13 +9,15 @@ A personal modification of the inspected Spotify TV 1.134.2 ARMv7 client. **One 
 
 ## Build and install
 
-The rebuilt **single APK** is labeled `1.3.0.1`. It retains Android versionCode `2340200` from the inspected client. This is a personal extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
+The rebuilt **single APK** is labeled `1.3.0.2`. It retains Android versionCode `2340200` from the inspected client. This is a personal extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
 
 `rebuild_release.py` verifies the exact previous v0.5 installation archive, replaces only the extension definitions/assets, adds the guarded embedded helper provider, updates the version name and merges the split resources/libraries. It produces an **unsigned APK**, which must be signed with the existing retained key to update your installed app. The original key is not stored here. Use `sign-apk.ps1`; do not uninstall or clear data to work around a mismatched key.
 
 GitHub Actions builds the unsigned APK and runs source/helper, native-settings, presentation, audio, lyrics and patch-fingerprint checks. Actual TV install, D-pad behavior, ad skipping, recovery/queue behavior and audio output still need device verification for this release. Earlier 0.5 device observations are documented separately in [VERIFICATION.md](VERIFICATION.md).
 
 The original four-APK source build is also supported by `build.ps1` with your own original inputs and key. `install.ps1` installs that set, grants the existing audio diagnostic permission, launches Spotify and starts the embedded helper. For a signed single APK use `adb install -r`, grant `android.permission.DUMP`, launch Spotify, then run `start-hush.ps1`.
+
+The Windows release ZIP includes the signed APK and official ADB platform-tools. Extract it and run `Install-Spotify.cmd`; Java and a local signing key are not required. It verifies the APK checksum and updates without uninstalling or clearing app data.
 
 ## Source and attribution
 

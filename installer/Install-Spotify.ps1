@@ -1,36 +1,12 @@
-param([string]$KeyStore, [string]$Serial, [switch]$SignOnly)
+param([string]$Serial, [switch]$ValidateOnly)
 $ErrorActionPreference = 'Stop'
-$expectedCert = '1ff3a55d2b53b7f232d47584eed11ed4445d0eba6c735212d071e62734fc57a1'
-$apk = Join-Path $PSScriptRoot 'SpotifyPlus-TV-1.3.0.1-unsigned.apk'
-if ((Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLower() -ne '202c36000fb1579e3020ffb82ff86155bc8fe0cab508da5b07c0088fdb66c1f5') { throw 'APK checksum mismatch. Download and extract the package again.' }
-# Use the bundled portable runtime. No Java installation, PATH edits or admin rights needed.
-$javaArchive = Join-Path $PSScriptRoot 'tools/java17-windows-x64.zip'
-if (-not (Test-Path -LiteralPath $javaArchive)) { throw 'Portable Java archive is missing. Extract the entire new installer ZIP, not just the script.' }
-if ((Get-FileHash -LiteralPath $javaArchive -Algorithm SHA256).Hash.ToLower() -ne '7fe2324cc5901a89aaa0e8dc232075c59f2aca5270c533bdb1b861a5274af834') { throw 'Portable Java checksum mismatch. Download and extract the new installer again.' }
-$javaDirectory = Join-Path $PSScriptRoot 'tools/java17'
-$java = Join-Path $javaDirectory 'jdk-17.0.20+8-jre/bin/java.exe'
-if (-not (Test-Path -LiteralPath $java)) {
-    Write-Host 'Preparing bundled portable Java 17 (first run only)...'
-    Expand-Archive -LiteralPath $javaArchive -DestinationPath $javaDirectory -Force
-}
-if (-not (Test-Path -LiteralPath $java)) { throw 'Portable Java could not be extracted. Make sure the folder is writable, then run again.' }
-if (-not $KeyStore) {
-    $candidates = @((Join-Path $env:USERPROFILE '.android/debug.keystore'))
-    if ($env:ANDROID_USER_HOME) { $candidates += Join-Path $env:ANDROID_USER_HOME 'debug.keystore' }
-    if ($env:ANDROID_SDK_HOME) { $candidates += Join-Path $env:ANDROID_SDK_HOME '.android/debug.keystore' }
-    $KeyStore = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-}
-if (-not $KeyStore) { $KeyStore = Read-Host 'Path to the signing .keystore/.jks used for the previous TV build (blank to stop)' }
-if (-not $KeyStore -or -not (Test-Path -LiteralPath $KeyStore)) {
-    throw 'The original signing key was not found. Nothing was installed or uninstalled. Keep the existing TV app; share this message so we can choose the next step.'
-}
-$key = (Resolve-Path -LiteralPath $KeyStore).Path
-$classPath = (Join-Path $PSScriptRoot 'tools/SpotifyTvSigner.jar') + ';' + (Join-Path $PSScriptRoot 'tools/apksig.jar')
-$output = Join-Path $PSScriptRoot ('SpotifyPlus-TV-1.3.0.1-signed-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.apk')
-Write-Host 'Checking the signing key against your previous TV build...'
-& $java -cp $classPath SpotifyTvSigner $apk $key $output $expectedCert
-if ($LASTEXITCODE -ne 0) { throw 'Signing stopped. The key may not match or its password may differ. Nothing was installed or uninstalled. Custom passwords can be supplied locally through SPTV_STORE_PASSWORD and SPTV_KEY_PASSWORD.' }
-if ($SignOnly) { Write-Host "Installable same-key APK: $output"; exit 0 }
+$apk = Join-Path $PSScriptRoot 'SpotifyPlus-TV-1.3.0.2.apk'
+$expectedHash = 'f5ecdc1f466fc98be2f6853ff753bad38ee8ea9478f9127e3300b50c0ba6150b'
+$hasher = [Security.Cryptography.SHA256]::Create()
+try { $actualHash = [BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($apk))).Replace('-', '').ToLowerInvariant() } finally { $hasher.Dispose() }
+if ($actualHash -ne $expectedHash) { throw 'APK checksum mismatch. Extract the installer ZIP again.' }
+$output = $apk
+if ($ValidateOnly) { Write-Host "Verified installer payload: $apk"; exit 0 }
 $adb = $null
 $command = Get-Command adb -ErrorAction SilentlyContinue
 if ($command) { $adb = $command.Source }

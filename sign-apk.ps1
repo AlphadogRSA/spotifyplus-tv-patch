@@ -18,7 +18,7 @@ try {
     $signArgs = @('sign','--ks',$key,'--ks-key-alias',$KeyAlias,'--ks-pass','env:SPTV_STORE_PASSWORD','--out',$OutputApk)
     if ($env:SPTV_KEY_PASSWORD) { $signArgs += @('--key-pass','env:SPTV_KEY_PASSWORD') }
     $signArgs += $aligned
-    & (Join-Path $tools 'apksigner.bat') @args
+    & (Join-Path $tools 'apksigner.bat') @signArgs
     if ($LASTEXITCODE -ne 0) { throw 'APK signing failed.' }
     & (Join-Path $tools 'apksigner.bat') verify --min-sdk-version 26 $OutputApk
     if ($LASTEXITCODE -ne 0) { throw 'APK signature verification failed.' }
