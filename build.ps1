@@ -6,8 +6,7 @@ param(
     [Parameter(Mandatory)][string]$KeyStore,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [string]$KeyAlias = 'androiddebugkey',
-    [string]$GradleExecutable,
-    [switch]$WithoutHush
+    [string]$GradleExecutable
 )
 $ErrorActionPreference = 'Stop'
 if (-not $env:SPTV_STORE_PASSWORD) { throw 'Set SPTV_STORE_PASSWORD for your own keystore; never commit the key or password.' }
@@ -28,7 +27,13 @@ $out = (Resolve-Path -LiteralPath $OutputDirectory).Path
 foreach ($name in @('classes','dex','framework','aligned','signed')) { New-Item -ItemType Directory -Path (Join-Path $out $name) | Out-Null }
 $env:JAVA_HOME = $jdk
 function Check-Exit([string]$Stage) { if ($LASTEXITCODE -ne 0) { throw "$Stage failed ($LASTEXITCODE)" } }
+git -C $PSScriptRoot submodule update --init --recursive
+Check-Exit 'Pinned Hush helper source'
+$generated = Join-Path $out 'hush-generated'
+python (Join-Path $PSScriptRoot 'hush/prepare.py') --output $generated
+Check-Exit 'Hush helper preparation'
 $sources = Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'src/dev/aurora/tvpatch') -Filter '*.java' | ForEach-Object FullName
+$sources += Get-ChildItem -LiteralPath $generated -Recurse -Filter '*.java' | ForEach-Object FullName
 & (Join-Path $jdk 'bin/javac.exe') -encoding UTF-8 -source 8 -target 8 -cp $androidJar -d (Join-Path $out 'classes') @sources
 Check-Exit 'Java compilation'
 & (Join-Path $jdk 'bin/jar.exe') cf (Join-Path $out 'extension.jar') -C (Join-Path $out 'classes') .
@@ -41,7 +46,7 @@ Check-Exit 'Verified patcher download'
 if (-not $GradleExecutable) { $GradleExecutable = Join-Path $patchProject 'gradlew.bat' }
 & $GradleExecutable -p $patchProject testFingerprints bundle "-PextensionDex=$(Join-Path $out 'dex/classes.dex')"
 Check-Exit 'Kotlin patch compilation and fingerprint tests'
-$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-0.6.rvp'
+$bundle = Join-Path $patchProject 'build/libs/spotifyplus-tv-1.3.0.1.rvp'
 $classpath = $bundle + [IO.Path]::PathSeparator + (Join-Path $patchProject '.tools/revanced-cli-6.0.0-all.jar')
 & (Join-Path $jdk 'bin/java.exe') -cp $classpath dev.aurora.patches.RunnerKt apply $bundle (Join-Path $original 'base.apk') (Join-Path $out 'patched-unsigned.apk') (Join-Path $out 'patch') (Join-Path $tools 'aapt2.exe')
 Check-Exit 'Modular patching and APK rebuild'
@@ -59,8 +64,5 @@ foreach ($entry in $hashes.PSObject.Properties) {
     & (Join-Path $tools 'apksigner.bat') verify --min-sdk-version 26 $signed
     Check-Exit 'Signature verification'
 }
-if (-not $WithoutHush) {
-    & (Join-Path $PSScriptRoot 'hush/build.ps1') -AndroidSdk $sdk -JavaHome $jdk -KeyStore $signingKey -KeyAlias $KeyAlias -OutputApk (Join-Path $out 'signed/Hush-TV.apk')
-}
 Compress-Archive -Path (Join-Path $out 'signed/*.apk') -DestinationPath (Join-Path $out 'SpotifyPlus-TV-patched.zip')
-Write-Output "Verified installation set (Spotify splits plus optional Hush companion): $(Join-Path $out 'signed')"
+Write-Output "Verified four-APK installation set: $(Join-Path $out 'signed')"

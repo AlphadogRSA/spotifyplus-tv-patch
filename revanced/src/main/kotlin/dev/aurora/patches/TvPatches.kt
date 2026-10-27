@@ -22,6 +22,13 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
             val app = doc.getElementsByTagName("application").item(0) as Element
             val android = "http://schemas.android.com/apk/res/android"
             app.setAttributeNS(android, "android:label", "Spotify+ TV")
+            doc.documentElement.setAttributeNS(android, "android:versionName", "1.3.0.1")
+            val provider = doc.createElement("provider")
+            provider.setAttributeNS(android, "android:name", "dev.aurora.tvpatch.hush.HelperProvider")
+            provider.setAttributeNS(android, "android:authorities", "com.spotify.tv.android.sptv_hush_helper")
+            provider.setAttributeNS(android, "android:exported", "true")
+            provider.setAttributeNS(android, "android:permission", "android.permission.INTERACT_ACROSS_USERS_FULL")
+            app.appendChild(provider)
             app.setAttributeNS(android, "android:debuggable", "true")
             val activities = doc.getElementsByTagName("activity")
             for (i in 0 until activities.length) {
@@ -29,7 +36,7 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
                 if (node.getAttributeNS(android, "name") == "com.spotify.tv.android.SpotifyTVActivity")
                     node.setAttributeNS(android, "android:label", "Spotify+ TV")
             }
-            for (permission in listOf("android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.DUMP", "dev.aurora.hushtv.permission.TV_BRIDGE")) {
+            for (permission in listOf("android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.DUMP")) {
                 if ((0 until doc.getElementsByTagName("uses-permission").length).none {
                     (doc.getElementsByTagName("uses-permission").item(it) as Element).getAttributeNS(android, "name") == permission
                 }) {
@@ -38,15 +45,6 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
                     doc.documentElement.insertBefore(element, app)
                 }
             }
-            val queries = (doc.getElementsByTagName("queries").item(0) as? Element)
-                ?: doc.createElement("queries").also { doc.documentElement.insertBefore(it, app) }
-            if ((0 until queries.getElementsByTagName("package").length).none {
-                (queries.getElementsByTagName("package").item(it) as Element).getAttributeNS(android, "name") == "dev.aurora.hushtv"
-            }) {
-                queries.appendChild(doc.createElement("package").also {
-                    it.setAttributeNS(android, "android:name", "dev.aurora.hushtv")
-                })
-            }
         }
     }
 }
@@ -54,7 +52,7 @@ val tvManifestPatch = resourcePatch(name = "TV app label and local lyric import"
 val tvAssetsPatch = rawResourcePatch(name = "TV theme assets and notices", use = false) {
     compatibleWith(PACKAGE(VERSION))
     apply {
-        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md", "HUSH-NOTICE.txt")) {
+        for (name in listOf("spotifyplus-tv.js", "TV-PATCH-LICENSE.txt", "SPOTIFYPLUS-LICENSE.txt", "INSPIRATION.md", "spotifyplus-settings.js", "HUSH-NOTICE.txt", "HUSH-COPYING.txt")) {
             val target = get("assets/$name", false)
             target.parentFile.mkdirs()
             requireNotNull(object {}.javaClass.classLoader.getResourceAsStream(name)) { "Missing bundled asset $name" }.use { input ->

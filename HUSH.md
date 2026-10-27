@@ -1,39 +1,22 @@
-# Hush · Spotify+ TV
+# Integrated Hush · one Spotify app
 
-Version 0.6 adds **Hush · ad-break skipping** to the TV remote menu. It opens an optional companion adapted from [coldMEW/Hush 2.0.2](https://github.com/coldMEW/Hush), pinned to `4e9ded397338de5c69b1784c636feb3d34a8de01`.
+Hush’s helper ships inside Spotify+ TV 1.3.0.1. There is no companion APK, extra launcher icon, notification-listener permission or Shizuku dependency. The shell-owned helper survives the Spotify process being stopped; Spotify’s next process resumes its own session. This adapts the restart strategy from coldMEW/Hush to the TV app’s native `is_ad_playing` signal.
 
-Hush attempts to drop an ad break by restarting Spotify and resuming its new media session. Upstream measurements are for the phone client; they do not establish that Spotify TV will drop ads, keep the queue, or recover in the same time. This TV integration needs testing on the actual TV. Keep **Mute detected ads** on for player-local muting when restarting is unavailable or fails. A failed automatic attempt imposes a two-minute cooldown, with one attempt per break until real music resumes.
+## Setup
 
-## Build and install
+1. Build/sign with the same retained private key as the existing TV installation, then update without uninstalling. The generated unsigned APK cannot be installed until signed.
+2. Launch Spotify once. The app writes a private, token-bound startup script for its embedded helper.
+3. Run `start-hush.ps1 -Serial TV_IP:5555` over your authorized ADB connection. The command stays private; the script does not print its token. Repeat after a TV reboot or APK update. The app remains debuggable as in the existing personal build so the installer can read this app-private startup command through `run-as`.
+4. Open Spotify’s own Settings/profile screen. Under Spotify+ TV, check **Hush helper setup**, then turn **Hush ad-break skipping** on. Keep **Mute detected ads** on for the fallback.
 
-1. Clone this repository with `git clone --recurse-submodules`, or run `git submodule update --init --recursive` in an existing checkout.
-2. Run the existing `build.ps1` with the original four Spotify TV 1.134.2 APKs, Android SDK 35/build-tools 35.0.0, a JDK 17 installation, and the same retained signing key used for your existing TV installation. Gradle and Maven dependency access is required. The build now also creates `signed/Hush-TV.apk`. Set `SPTV_STORE_PASSWORD` and, if needed, `SPTV_KEY_PASSWORD` outside the repository. `-WithoutHush` builds only the four Spotify splits.
-3. Run `install.ps1 -ApkDirectory <signed-directory> -Serial <adb-device>`. This installs the companion first and then updates all four Spotify splits. There is no uninstall or data reset. Use `-WithoutHush` for a TV-only update.
-4. In Spotify+ TV, press Menu or hold OK, choose **Hush · ad-break skipping**, then enable Hush.
-5. Set up Hush's own helper using Wireless debugging on Android 11+, or authorize an already-running Shizuku on Android 8+. The original setup screens remain available; some TV firmware lacks the required Wireless debugging/pairing UI. On those TVs use Shizuku started with its documented computer/ADB setup. Helper availability after a reboot must be checked again.
-6. Return to Spotify and start playback. The status screen should report a connected session. **Test Spotify restart** asks before interrupting playback. Check that the correct playlist resumes. Then test with a real ad.
+The helper provider accepts only Android’s shell UID, requires the privileged cross-user permission and validates a random token from private app storage. Its adapted command builder accepts only the fixed restart action for `com.spotify.tv.android/.SpotifyTVActivity`; it rejects arbitrary actions/components. It does not install or control another application.
 
-The GitHub Actions `Hush-TV-unsigned` artifact is an unsigned companion build. It must be signed using your TV key before installation. It is not an installable update to the proprietary Spotify APK set. No original APKs or signing keys are stored in this repository.
+## Recovery and limits
 
-## What crosses between the apps
+Before requesting a restart, Spotify commits its recovery state. The helper executes the whole stop/allowlist/start sequence outside the dying app process. The new process waits for its own media session, retries play for at most 20 seconds, honors the sleep deadline even if the visible timer has already cleared, and falls back after failure. Attempts have a 30-second minimum interval; failed recovery imposes a two-minute cooldown. Paused ads are left alone.
 
-The extension sends its own media-session token, native `is_ad_playing` flag, monotonic timestamp and sleep deadline to an explicit receiver. Both directions check the matching signing identity; the receiver also requires a signature permission. Old signals are rejected. No credentials, account entitlements or arbitrary shell commands are transmitted. The companion uses its native-session capability instead of requiring notification access on TV.
+Whether restarting actually drops an ad break or preserves the queue depends on Spotify TV. Upstream phone timings do not establish TV behavior. This release needs real-device tests for ad-return behavior, queue context, helper loss, screen/background behavior, sleep expiry during restart, EQ reattachment and same-key updating. No calibrated audio or guaranteed ad-removal claim is made.
 
-Hush is off by default. Enable/disable it in its TV screen. The companion never uses the upstream phone-wide ad-mute path: muting remains inside Spotify's player. Resume kicks target only Spotify's forwarded media session. The TV sleep deadline survives a Spotify process restart and is cleared after a TV reboot. If it expires during recovery, Hush stops attempting to resume playback.
+## Reproducible source
 
-DNS filtering is not required and stays off by default. The upstream optional VPN implementation remains in the separate companion; it is not activated by the TV feature or build/install scripts.
-
-## Source and license
-
-The upstream `hush/upstream` gitlink is unmodified. `hush/prepare.py` verifies that exact commit and clean tracked source, copies only tracked Android files into a new build directory, retargets Spotify's package, replaces the global-mute watcher path, connects native TV sessions, and adds `hush/overlay`. All adaptation is visible in these tracked files. Generated source is under `hush/build/android` and ignored by git.
-
-Hush and the companion adaptations are GPL-3.0. The companion embeds the full upstream license and a source notice. The independent TV protocol adapter remains part of the MIT extension; no Hush implementation is linked into it. The ReVanced host retains its existing GPL license. None of these licenses relicense Spotify binaries.
-
-## Device checks still required
-
-- Pairing/helper setup and D-pad navigation on the actual firmware.
-- New-session delivery and playback recovery after a test restart and a real ad.
-- Playlist/queue behavior, ad-return failure, and the two-minute failure cooldown.
-- Local mute restoration and whether EQ reattaches to the new Spotify audio session.
-- Sleep expiry before/during restart, a background Spotify session, helper loss, and reboot recovery.
-- Same-key updates preserve existing pairing, settings, lyrics and app data.
+`hush/upstream` is an unchanged pinned submodule. `hush/prepare.py` verifies its commit and clean tracked source, then extracts/adapts eight helper classes under `dev.aurora.tvpatch.hush` into a new generated source directory. The command restriction, TV target, provider authority and protocol version changes are visible in that script. These helper portions are GPL-3.0; their full license and source notice are included in the APK. No phone UI, VPN/DNS filtering, notification watcher, global-volume mute or account handling is imported.

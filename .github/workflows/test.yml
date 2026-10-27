@@ -28,12 +28,13 @@ jobs:
           java -ea -cp test-classes AdMuteStateTest
           javac -d test-classes src/dev/aurora/tvpatch/AudioSessions.java tests/AudioSessionsTest.java
           java -ea -cp test-classes AudioSessionsTest
-          javac -d test-classes src/dev/aurora/tvpatch/AudioEffectPlan.java tests/AudioEffectPlanTest.java
+          javac -d test-classes src/dev/aurora/tvpatch/GraphicEq.java src/dev/aurora/tvpatch/AudioEffectPlan.java tests/AudioEffectPlanTest.java tests/GraphicEqTest.java
           java -ea -cp test-classes AudioEffectPlanTest
+          java -ea -cp test-classes GraphicEqTest
           javac -d test-classes src/dev/aurora/tvpatch/SleepDeadline.java tests/SleepDeadlineTest.java
           java -ea -cp test-classes SleepDeadlineTest
-          javac -d test-classes hush/overlay/java/io/coldmew/hush/TvSkipPolicy.java hush/tests/TvSkipPolicyTest.java
-          java -ea -cp test-classes TvSkipPolicyTest
+          javac -d test-classes src/dev/aurora/tvpatch/SleepDeadline.java src/dev/aurora/tvpatch/HushPolicy.java tests/HushPolicyTest.java
+          java -ea -cp test-classes HushPolicyTest
       - name: Test modular fingerprints
         run: bash revanced/gradlew -p revanced testFingerprints
       - name: Check source tools
@@ -58,7 +59,8 @@ jobs:
           node tests/presentation.test.cjs
           node tests/theme-regression.test.cjs
           node tests/presentation-performance.test.cjs
-  hush-tv:
+          node tests/native-settings.test.cjs
+  rebuild-apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -69,26 +71,31 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
-      - name: Prepare pinned Hush TV sources
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Prepare and test embedded helper sources
         run: |
           python3 -m unittest discover -s hush/tests -v
           python3 hush/prepare.py
-      - name: Install pinned Android build platform
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compile the complete TV extension and build its DEX
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Compile single-app runtime
         run: |
           mkdir -p .tools/extension-classes .tools/extension-dex
-          javac -encoding UTF-8 -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d .tools/extension-classes src/dev/aurora/tvpatch/*.java
+          javac -encoding UTF-8 -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d .tools/extension-classes src/dev/aurora/tvpatch/*.java hush/build/generated/dev/aurora/tvpatch/hush/*.java
           jar cf .tools/extension.jar -C .tools/extension-classes .
           "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 26 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output .tools/extension-dex .tools/extension.jar
-      - name: Test and build the Hush companion
-        env:
-          HUSH_SIGNING: /tmp/no-upstream-signing.properties
-        run: bash hush/build/android/gradlew -p hush/build/android testDebugUnitTest assembleRelease
+      - name: Fetch verified prior release and build tools
+        run: |
+          curl --fail --location --output .tools/current.apks https://github.com/AlphadogRSA/spotifyplus-tv-patch/releases/download/v0.5.0/SpotifyPlus-TV-1.134.2-v0.5.apks
+          curl --fail --location --output .tools/apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v3.0.3/apktool_3.0.3.jar
+          curl --fail --location --output .tools/apkeditor.jar https://github.com/REAndroid/APKEditor/releases/download/V1.4.9/APKEditor-1.4.9.jar
+      - name: Rebuild one unsigned APK
+        run: python3 rebuild_release.py --input .tools/current.apks --dex .tools/extension-dex/classes.dex --apktool .tools/apktool.jar --apkeditor .tools/apkeditor.jar --output build/release-1.3.0.1
       - uses: actions/upload-artifact@v4
         with:
-          name: Hush-TV-unsigned
+          name: SpotifyPlus-TV-1.3.0.1-unsigned
           path: |
-            hush/build/android/app/build/outputs/apk/release/app-release-unsigned.apk
-            hush/build/android/app/build/outputs/mapping/release/mapping.txt
+            build/release-1.3.0.1/SpotifyPlus-TV-1.3.0.1-unsigned.apk
+            build/release-1.3.0.1/SHA256.txt
           if-no-files-found: error

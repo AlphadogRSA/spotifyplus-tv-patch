@@ -1,9 +1,11 @@
-# Hush support for Spotify+ TV
+# Spotify+ TV 1.3.0.1 design
 
-The user approved adding Hush as a TV app feature, using a companion to survive Spotify restarts. Add a remote-friendly Hush menu entry and an independently installed companion derived from coldMEW/Hush 2.0.2 at `4e9ded397338de5c69b1784c636feb3d34a8de01`. Preserve themes, lyrics, EQ and player-local muting. Persist the TV sleep deadline across process restarts.
+The user requests one installed Spotify app with Hush functionality embedded, a graphic EQ matching the supplied dark/blue reference, custom controls inside Spotify’s existing settings panel, and versionName 1.3.0.1.
 
-The companion uses Hush's existing helper/Shizuku restart engine. TV native ad flags and own-session tokens cross an explicit, signature-protected receiver; both APKs must be signed with the user's existing key. No arbitrary shell commands or account changes are added. Native session forwarding avoids depending on TV notification access. Restart skipping is opt-in, deduplicated, and falls back to existing local muting when unavailable. Never use Hush's phone-wide volume mute on TV.
+Embed only eight GPL helper classes from coldMEW/Hush 2.0.2 at 4e9ded397338de5c69b1784c636feb3d34a8de01. Start the shell-owned helper through authorized ADB, so it survives Spotify force-stop. Restrict its adapted command builder to the fixed Spotify TV restart. Persist recovery state before stopping; the new app process recovers its own media session with time bounds, cooldown and sleep protection. Keep local muting as fallback. No companion application, VPN, phone UI or account/entitlement changes.
 
-Approaches considered: embedding everything loses the helper on each Spotify restart; a separately signed companion survives and keeps GPL code separate from the MIT extension. The user chose the companion approach. Keep upstream as a pinned submodule and apply explicit reproducible TV changes in a build preparation script, with attribution and GPL source available. Do not copy GPL implementation into the MIT extension.
+Place all entry controls in the observed native profile settings menu, preserving Spotify rows and its focus styling. Restrict the WebView bridge to fixed settings actions on allowed Spotify main pages. The shortcut opens native Settings. EQ/lyrics/timer are native subpanels reached from these rows.
 
-The first version exposes the existing Hush wireless-debugging setup and Shizuku authorization from a D-pad screen; device-specific pairing and TV restart behavior require real-device checks. DNS remains off by default and is available only in advanced upstream settings. CI builds the companion; rebuilding the proprietary Spotify splits still requires the user's original four APKs and private key, neither available here.
+The EQ has ten visual curve points (31 Hz–16 kHz), log-frequency interpolation onto real output bands, ±6 dB range and 0–6 dB post-gain. Preserve five-band settings via migration. Provide remote, touch and accessibility adjustment.
+
+Rebuild the exact prior personal release, replace only extension classes/assets, add the embedded provider and merge the inspected splits into one unsigned APK. Retain versionCode 2340200 for the base client. The retained private signing key is unavailable; do not claim an installable same-key update or device verification without it.

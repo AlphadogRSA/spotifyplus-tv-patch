@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const {chromium}=require('playwright');
+(async()=>{
+ const browser=await chromium.launch(process.env.SPTV_BROWSER ? {executablePath:process.env.SPTV_BROWSER} : {headless:true});const page=await browser.newPage({viewport:{width:1920,height:1080}});
+ const source=fs.readFileSync('assets/spotifyplus-settings.js','utf8');
+ const config={theme:1,blurArtwork:true,motion:true,hideUpgrade:true,muteAds:true,hushEnabled:false,hushStatus:'Helper ready',audioStatus:'Off',sleep:'Off',version:'1.3.0.1'};
+ await page.setContent('<button data-testid="top-menu--settings">Settings</button><main id="home">Home</main>');
+ await page.evaluate(([source,config])=>{window.calls=[];window.SpotifyPlusSettings={action:a=>window.calls.push(a)};(new Function('return ('+source+')'))()(config)},[source,config]);
+ assert.equal(await page.locator('#sptv-native-settings').count(),0,'No custom settings panel on Home');
+ await page.evaluate(()=>{document.querySelector('main').innerHTML='<div class="profile__menu" data-testid="profile-menu"><div class="profile-menu-item"><button class="simple-menu-item--focused" id="native">About Spotify</button></div></div>'});
+ await page.waitForSelector('#sptv-native-settings');
+ assert.equal(await page.locator('#native').textContent(),'About Spotify','Existing native row retained');
+ assert.equal(await page.locator('#sptv-native-settings button').count(),11);
+ await page.locator('#native').focus();await page.keyboard.press('ArrowDown');
+ assert.equal(await page.evaluate(()=>document.activeElement.dataset.sptvAction),'theme');
+ await page.keyboard.press('Enter');assert.deepEqual(await page.evaluate(()=>window.calls),['theme']);
+ await page.keyboard.press('ArrowUp');assert.equal(await page.evaluate(()=>document.activeElement.id),'native');
+ await page.evaluate(c=>window.__sptvSettings.configure(c),config);
+ assert.equal(await page.locator('#sptv-native-settings').count(),1,'Repeated settings updates are idempotent');
+ await page.locator('[data-sptv-action="hush"]').click();assert.equal((await page.evaluate(()=>window.calls)).at(-1),'hush');
+ await page.evaluate(c=>window.__sptvSettings.configure({...c,hushEnabled:true}),config);
+ assert.equal(await page.locator('[data-sptv-action="hush"] p').textContent(),'On');
+ await page.evaluate(()=>document.querySelector('main').replaceChildren());
+ await page.waitForFunction(()=>!document.querySelector('#sptv-native-settings'));
+ assert.equal(await page.locator('#sptv-native-settings').count(),0,'Settings removed when native route is left');
+ await browser.close();console.log('Native settings: route scoping, native rows, D-pad, actions, state and cleanup passed');
+})().catch(e=>{console.error(e);process.exit(1)});

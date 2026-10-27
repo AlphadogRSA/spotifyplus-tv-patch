@@ -85,7 +85,7 @@ public final class Hooks {
                     Activity owner = activity.get();
                     if (owner != null) {
                         prefs(owner).edit().remove("sleepAt").apply();
-                        HushClient.signal(owner, token, detectedAd, sleepAt, true);
+
                     }
                     toast("Sleep timer finished");
                 }
@@ -93,7 +93,8 @@ public final class Hooks {
                 applyAdVolume();
                 Activity current = activity.get();
                 if (current != null) {
-                    HushClient.signal(current, token, detectedAd, sleepAt, false);
+                    HushIntegration.tick(current, controller, detectedAd, sleepAt);
+                    WebView page = web.get(); if (page != null) NativeSettings.refresh(page, false);
                     PlaybackState playback = cachedPlayback;
                     AudioDsp.tick(current, playback != null && playback.getState() == PlaybackState.STATE_PLAYING);
                 }
@@ -132,10 +133,11 @@ public final class Hooks {
             web = new WeakReference<>(view);
             if (token != null) connectController(a.getApplicationContext());
             if (!started) { started = true; UI.post(ticker); }
+            HushIntegration.prepare(a);
             if (view != null) apply(view);
             Log.i("SPTV", "Activity extension attached");
             if (!prefs(a).getBoolean("welcomed", false)) {
-                toast("Spotify+ TV: press Menu or hold OK for settings");
+                toast("Spotify+ TV controls are in Spotify Settings");
                 prefs(a).edit().putBoolean("welcomed", true).apply();
             }
         } catch (Exception ignored) { }
@@ -177,7 +179,7 @@ public final class Hooks {
         };
         next.registerCallback(controllerCallback, UI);
         cachedPlayback = next.getPlaybackState(); cachedMetadata = next.getMetadata();
-        HushClient.signal(context, token, detectedAd, sleepAt, true);
+        HushIntegration.recover(context, next);
     }
     private static void clearLyricViews() {
         lyricTitle = null; lyricStatus = null; fetchButton = null; plainButton = null;
@@ -208,7 +210,7 @@ public final class Hooks {
             detectedAd = playing;
             AD_MUTE.ad(playing, SystemClock.elapsedRealtime()); applyAdVolume();
             Activity a = activity.get();
-            if (a != null) HushClient.signal(a, token, detectedAd, sleepAt, true);
+            if (a != null) HushIntegration.tick(a, controller, detectedAd, sleepAt);
         });
     }
     /** Intercept TVBridge's native player volume; never Android's device volume. */
@@ -311,6 +313,8 @@ public final class Hooks {
             }
             if (script == null) script = read(view.getContext().getAssets().open("spotifyplus-tv.js"));
             SharedPreferences p = prefs(view.getContext());
+            Activity owner = activity.get();
+            if (owner != null) NativeSettings.attach(view, owner);
             JSONObject config = new JSONObject();
             config.put("theme", p.getInt("theme", 1));
             config.put("motion", p.getBoolean("motion", true));
@@ -320,7 +324,8 @@ public final class Hooks {
             view.evaluateJavascript("(" + script + ")(" + config.toString() + ")", result -> Log.i("SPTV", "Theme result: " + result));
         } catch (Exception failure) { Log.w("SPTV", "Theme failed: " + failure.getClass().getSimpleName()); }
     }
-    private static void reapply() { WebView view = web.get(); if (view != null) apply(view); }
+    private static void reapply() { WebView view = web.get();
+            if (view != null) apply(view); }
 
     private static TextView text(Activity a, String content, int size, int color) {
         TextView view = new TextView(a);
@@ -361,110 +366,92 @@ public final class Hooks {
         return dialog;
     }
     public static void showMenu(Activity a) {
-        if (a.isFinishing() || (menu != null && menu.isShowing())) return;
-        LinearLayout body = panel(a);
-        TextView heading = text(a, "Spotify+ TV", 24, accent(a)); add(body, heading);
+        WebView view = web.get();
+        if (view != null) NativeSettings.open(view);
+        else toast("Open Spotify Settings to find your custom controls.");
+    }
+    public static JSONObject settingsSnapshot(Context context) throws Exception {
+        SharedPreferences p = prefs(context);
+        JSONObject values = new JSONObject();
+        values.put("theme", p.getInt("theme", 1));
+        values.put("blurArtwork", p.getBoolean("blurArtwork", true));
+        values.put("motion", p.getBoolean("motion", true));
+        values.put("hideUpgrade", p.getBoolean("hideUpgrade", true));
+        values.put("muteAds", p.getBoolean("muteAds", true));
+        values.put("hushEnabled", p.getBoolean("hushEnabled", false));
+        values.put("hushStatus", HushIntegration.status());
+        values.put("audioStatus", AudioDsp.status());
+        values.put("sleep", sleepAt > 0 ? "Active · survives Spotify restarts" : "Off");
+        values.put("version", "1.3.0.1");
+        return values;
+    }
+    public static void settingsAction(Activity a, String action) {
         SharedPreferences p = prefs(a);
-        String[] names = {"Spotify original", "Aurora accent", "Midnight accent", "Ember accent"};
-        Button theme = button(a, "Theme: " + names[p.getInt("theme", 1) % 4], () -> { });
-        theme.setOnClickListener(v -> {
-            int value = (p.getInt("theme", 1) + 1) % 4; p.edit().putInt("theme", value).apply();
-            theme.setText("Theme: " + names[value]); heading.setTextColor(accent(a));
-            if (theme.hasFocus() && theme.getBackground() instanceof GradientDrawable) ((GradientDrawable)theme.getBackground()).setColor(accent(a));
-            reapply();
-        }); add(body, theme);
-        Button motion = button(a, "Animated background: " + (p.getBoolean("motion", true) ? "on" : "off"), () -> { });
-        motion.setOnClickListener(v -> {
-            boolean value = !p.getBoolean("motion", true); p.edit().putBoolean("motion", value).apply();
-            motion.setText("Animated background: " + (value ? "on" : "off")); reapply();
-        }); add(body, motion);
-        Button blur = button(a, "Background artwork blur: " + (p.getBoolean("blurArtwork", true) ? "on" : "off"), () -> { });
-        blur.setOnClickListener(v -> {
-            boolean value = !p.getBoolean("blurArtwork", true); p.edit().putBoolean("blurArtwork", value).apply();
-            blur.setText("Background artwork blur: " + (value ? "on" : "off")); reapply();
-        }); add(body, blur);
-        Button upgrade = button(a, "Hide promotions: " + (p.getBoolean("hideUpgrade", true) ? "on" : "off"), () -> { });
-        upgrade.setOnClickListener(v -> {
-            boolean value = !p.getBoolean("hideUpgrade", true); p.edit().putBoolean("hideUpgrade", value).apply();
-            upgrade.setText("Hide promotions: " + (value ? "on" : "off")); reapply();
-        }); add(body, upgrade);
-        Button mute = button(a, "Mute detected ads: " + (p.getBoolean("muteAds", true) ? "on" : "off"), () -> { });
-        mute.setOnClickListener(v -> {
-            boolean value = !p.getBoolean("muteAds", true); p.edit().putBoolean("muteAds", value).apply();
-            AD_MUTE.enabled(value); applyAdVolume();
-            mute.setText("Mute detected ads: " + (value ? "on" : "off"));
-        }); add(body, mute);
-        add(body, button(a, "Hush · ad-break skipping", () -> {
-            HushClient.signal(a, token, detectedAd, sleepAt, true);
-            HushClient.open(a);
-        }));
-        add(body, button(a, "Audio · Equalizer & Boost", () -> { menu.dismiss(); showAudio(a); }));
-        add(body, button(a, "Lyrics · local / LRCLIB", () -> { menu.dismiss(); showLyrics(a); }));
-        add(body, button(a, "Sleep timer" + (sleepAt > 0 ? " · active" : ""), () -> {
-            menu.dismiss(); trackDialog(new AlertDialog.Builder(a).setTitle("Pause this Spotify session after…")
-                .setItems(new String[]{"15 minutes", "30 minutes", "60 minutes", "Cancel timer"}, (dialog, which) -> {
-                    sleepAt = which == 3 ? 0 : System.currentTimeMillis() + new long[]{900000,1800000,3600000}[which];
-                    int boot = android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
-                    p.edit().putLong("sleepAt", sleepAt).putInt("sleepBoot", boot).apply();
-                    HushClient.signal(a, token, detectedAd, sleepAt, true);
-                    toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. It survives Spotify restarts.");
-                }).create()).show();
-        }));
-        add(body, button(a, "About", () -> trackDialog(new AlertDialog.Builder(a)
-            .setTitle("Spotify+ TV · 0.6")
-            .setMessage("Made for your TV remote.\n\nArtwork blur, accent colors, lyrics, sleep timer, ad muting, optional Hush companion support and audio controls.\n\nInspired by SpotifyPlus (MIT, © 2025 Devon Shoutz), Eevee's lyrics features and Spicetify's UI customization. Original Android TV implementation.\n\nOptional lyrics lookup sends track title, artist, album and duration to LRCLIB. Full source and license notices are included in the project and APK assets.")
-            .setPositiveButton("Close", null).create()).show()));
-        add(body, button(a, "Return to Spotify", () -> menu.dismiss()));
-        ScrollView scroll = new ScrollView(a); scroll.setBackgroundColor(Color.TRANSPARENT); scroll.addView(body);
-        menu = show(a, scroll); theme.requestFocus();
+        if (action.equals("theme")) p.edit().putInt("theme", (p.getInt("theme", 1) + 1) % 4).apply();
+        else if (action.equals("blur")) p.edit().putBoolean("blurArtwork", !p.getBoolean("blurArtwork", true)).apply();
+        else if (action.equals("motion")) p.edit().putBoolean("motion", !p.getBoolean("motion", true)).apply();
+        else if (action.equals("promotions")) p.edit().putBoolean("hideUpgrade", !p.getBoolean("hideUpgrade", true)).apply();
+        else if (action.equals("mute")) {
+            boolean value = !p.getBoolean("muteAds", true);
+            p.edit().putBoolean("muteAds", value).apply(); AD_MUTE.enabled(value); applyAdVolume();
+        } else if (action.equals("hush")) p.edit().putBoolean("hushEnabled", !p.getBoolean("hushEnabled", false)).apply();
+        else if (action.equals("hushSetup")) HushIntegration.showSetup(a);
+        else if (action.equals("audio")) showAudio(a);
+        else if (action.equals("lyrics")) showLyrics(a);
+        else if (action.equals("sleep")) showSleep(a);
+        else if (action.equals("about")) trackDialog(new AlertDialog.Builder(a).setTitle("Spotify+ TV · 1.3.0.1")
+            .setMessage("Graphic EQ, lyrics, artwork themes and integrated Hush helper.\n\nHush helper adapted from coldMEW/Hush 2.0.2 (GPL-3.0). Spotify's account and streaming behavior remain its own. Full source and notices are included in the project.")
+            .setPositiveButton("Close", null).create()).show();
+        else return;
+        reapply();
+    }
+    private static void showSleep(Activity a) {
+        trackDialog(new AlertDialog.Builder(a).setTitle("Sleep timer")
+            .setItems(new String[]{"15 minutes", "30 minutes", "60 minutes", "Cancel timer"}, (dialog, which) -> {
+                sleepAt = which == 3 ? 0 : System.currentTimeMillis() + new long[]{900000,1800000,3600000}[which];
+                int boot = android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+                prefs(a).edit().putLong("sleepAt", sleepAt).putInt("sleepBoot", boot).apply();
+                WebView view = web.get(); if (view != null) NativeSettings.refresh(view, true);
+                toast(which == 3 ? "Sleep timer cancelled" : "Sleep timer set. It survives Spotify restarts.");
+            }).create()).show();
     }
 
     private static void showAudio(Activity a) {
         SharedPreferences p = prefs(a);
-        LinearLayout body = panel(a);
-        add(body, text(a, "Audio", 26, accent(a)));
-        TextView status = text(a, AudioDsp.status(), 14, 0xffb3b3b3); add(body, status);
-        Button enabled = button(a, "EQ & Boost: " + (p.getBoolean("dspEnabled", false) ? "on" : "off"), () -> { });
+        LinearLayout body = new LinearLayout(a);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(24, 16, 24, 16);
+        body.setBackgroundColor(0xff0c1117);
+        LinearLayout toolbar = new LinearLayout(a);
+        toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView heading = text(a, "Equalizer · Graphic EQ", 23, Color.WHITE);
+        toolbar.addView(heading, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        GraphicEqView chart = new GraphicEqView(a, p);
+        Button enabled = button(a, "", () -> { });
+        Runnable label = () -> enabled.setText(p.getBoolean("dspEnabled", false) ? "EQ  ●  ON" : "EQ  ○  OFF");
+        label.run();
         enabled.setOnClickListener(v -> {
-            boolean value = !p.getBoolean("dspEnabled", false); p.edit().putBoolean("dspEnabled", value).apply();
-            enabled.setText("EQ & Boost: " + (value ? "on" : "off")); AudioDsp.refresh();
-        }); add(body, enabled);
-        add(body, text(a, "Left / Right adjusts · OK increases", 13, 0xffb3b3b3));
-        add(body, gainButton(a, p, "boostMb", "Volume boost", 0, 600, 100));
-        String[] labels = {"60 Hz · Bass", "230 Hz · Low mids", "910 Hz · Mids", "3.6 kHz · Presence", "14 kHz · Treble"};
-        for (int i = 0; i < 5; i++) add(body, gainButton(a, p, "eq" + i, labels[i], -6, 6, 1));
-        add(body, button(a, "Flat / reset", () -> {
-            SharedPreferences.Editor edit = p.edit().putInt("boostMb", 0);
-            for (int i = 0; i < 5; i++) edit.putInt("eq" + i, 0);
-            edit.apply(); AudioDsp.refresh();
-            for (int i = 0; i < body.getChildCount(); i++) {
-                View child = body.getChildAt(i); if (child.getTag() instanceof Runnable) ((Runnable)child.getTag()).run();
-            }
-        }));
-        ScrollView scroll = new ScrollView(a); scroll.addView(body);
-        AlertDialog dialog = show(a, scroll); enabled.requestFocus();
+            boolean value = !p.getBoolean("dspEnabled", false);
+            p.edit().putBoolean("dspEnabled", value).apply();
+            label.run(); chart.enabled(value); AudioDsp.refresh();
+        });
+        toolbar.addView(enabled);
+        toolbar.addView(button(a, "Reset", chart::reset));
+        final AlertDialog[] owner = new AlertDialog[1];
+        toolbar.addView(button(a, "Close", () -> { if (owner[0] != null) owner[0].dismiss(); }));
+        add(body, toolbar);
+        TextView status = text(a, AudioDsp.status(), 13, 0xffaebac4); add(body, status);
+        body.addView(chart, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        add(body, text(a, "← → Select band   ·   ↑ ↓ Adjust   ·   OK Post-gain / toolbar   ·   Back Close", 12, 0xffaebac4));
+        add(body, text(a, "10-point curve mapped to available output bands · ±6 dB EQ · 0–6 dB post-gain", 11, 0xff81919d));
+        AlertDialog dialog = show(a, body); owner[0] = dialog;
+        dialog.getWindow().setLayout((int)(a.getResources().getDisplayMetrics().widthPixels * .92),
+            (int)(a.getResources().getDisplayMetrics().heightPixels * .90));
+        chart.requestFocus();
         Runnable updater = new Runnable() { public void run() {
             if (dialog.isShowing()) { setTextChanged(status, AudioDsp.status()); UI.postDelayed(this, 1000); }
         }};
         dialogUpdates.put(dialog, updater); UI.post(updater);
-    }
-    private static Button gainButton(Activity a, SharedPreferences p, String key, String label, int min, int max, int step) {
-        Button control = button(a, "", () -> { });
-        Runnable update = () -> {
-            float db = p.getInt(key, 0) / (key.equals("boostMb") ? 100f : 1f);
-            control.setText(label + ": " + (db > 0 ? "+" : "") + String.format(java.util.Locale.ROOT, "%.0f dB", db));
-        };
-        java.util.function.IntConsumer adjust = direction -> {
-            int value = Math.max(min, Math.min(max, p.getInt(key, 0) + direction * step));
-            p.edit().putInt(key, value).apply(); AudioDsp.refresh(); update.run();
-        };
-        control.setOnClickListener(v -> adjust.accept(1));
-        control.setOnKeyListener((v, code, event) -> {
-            if (code != KeyEvent.KEYCODE_DPAD_LEFT && code != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
-            if (event.getAction() == KeyEvent.ACTION_DOWN) adjust.accept(code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1);
-            return true;
-        });
-        control.setTag(update); update.run(); return control;
     }
     private static String lyricName(MediaMetadata metadata) {
         String id = metadata == null ? "" : metadata.getString(MediaMetadata.METADATA_KEY_MEDIA_ID);
