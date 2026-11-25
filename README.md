@@ -51,7 +51,7 @@ After manual installation or a TV reboot, run `start-hush.ps1 -Serial TV_IP:5555
 
 ## Build from source
 
-The rebuilt **single APK** is labeled `1.3.0.9`. It retains Android versionCode `2340200` from the inspected client. This is a extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
+The rebuilt **single APK** is labeled `1.3.0.9`. It retains Android versionCode `2340200` from the inspected client. This is an extension version, not an upstream Spotify release. The build merges the inspected ARMv7/English/TV-density splits into one file; it is not an all-architecture universal package.
 
 The source matching this release is available at **[tag v1.3.0.9](https://github.com/AlphadogRSA/spotifyplus-tv-patch/tree/v1.3.0.9)** and on `feat/hush-tv`. The default branch has not yet merged the feature implementation. To obtain the matching source and pinned helper:
 
@@ -84,9 +84,9 @@ Credit belongs to the developers and communities behind each respective project.
 | Developer / project | Contribution or inspiration |
 | --- | --- |
 | [Tumelo Rathebe / AlphadogRSA](https://github.com/AlphadogRSA) | Maintains this Android TV project, TV integration, builds and installer. |
-| [Devon Shoutz / LeNerd46 â€” SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus) | Inspiration for themes, motion, sleep timer and custom lyrics. The upstream MIT notice is retained; mobile hooks, fonts and assets are not copied. |
-| [coldMEW â€” Hush](https://github.com/coldMEW/Hush) | Eight helper source files adapted from Hush 2.0.2, pinned at `4e9ded397338de5c69b1784c636feb3d34a8de01`, are embedded under GPL-3.0. |
-| [SideloadLabs â€” EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated) | Historical inspiration for the retired experimental lyrics feature and presentation controls. No Eevee code, binaries, assets or iOS hooks are incorporated. |
+| [Devon Shoutz / LeNerd46 — SpotifyPlus](https://github.com/LeNerd46/SpotifyPlus) | Inspiration for themes, motion, sleep timer and custom lyrics. The upstream MIT notice is retained; mobile hooks, fonts and assets are not copied. |
+| [coldMEW — Hush](https://github.com/coldMEW/Hush) | Eight helper source files adapted from Hush 2.0.2, pinned at `4e9ded397338de5c69b1784c636feb3d34a8de01`, are embedded under GPL-3.0. |
+| [SideloadLabs — EeveeSpotifyReincarnated](https://github.com/SideloadLabs/EeveeSpotifyReincarnated) | Historical inspiration for the retired experimental lyrics feature and presentation controls. No Eevee code, binaries, assets or iOS hooks are incorporated. |
 | [Spicetify contributors](https://github.com/spicetify/cli) | Inspiration for CSS-based presentation customization. No Spicetify source, extensions or assets are bundled. |
 | [ReVanced developers](https://github.com/ReVanced/revanced-patcher) | Official patching framework used by the Kotlin build host, with pinned CLI tooling. |
 | [LRCLIB contributors](https://lrclib.net/docs) | Public API used by the retired experimental lyrics lookup in earlier releases. |
@@ -95,4 +95,4 @@ Credit belongs to the developers and communities behind each respective project.
 
 See the [inspiration notes](assets/INSPIRATION.md), [SpotifyPlus MIT notice](assets/SPOTIFYPLUS-LICENSE.txt) and [Hush source notice](https://github.com/AlphadogRSA/spotifyplus-tv-patch/blob/v1.3.0.9/assets/HUSH-NOTICE.txt) for attribution details.
 
-The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotifyâ€™s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. The experimental lyrics integration has been removed; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).
+The build does not edit Spotify credentials, subscriptions or account entitlements. The local volume fallback affects only Spotify’s player; the graphic EQ attaches only to positive audio sessions owned by Spotify. There is no shared-output effect fallback. The experimental lyrics integration has been removed; see [LYRICS.md](LYRICS.md). Audio diagnostics remain in memory; see [AUDIO.md](AUDIO.md).
